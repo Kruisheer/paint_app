@@ -1,6 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useRef, useEffect } from "react";
+import Button from "./components/ui/Button";  // Correct relative path
+import Card from "./components/ui/Card";      // Correct relative path
+import CardContent from "./components/ui/CardContent"; // Ensure these components exist
+import CardHeader from "./components/ui/CardHeader";   // Ensure these components exist
+import CardTitle from "./components/ui/CardTitle";     // Ensure these components exist
+import Label from "./components/ui/Label";             // Correct relative path
 
 const colors = [
   { name: 'Red', value: 'red' },
