@@ -1,11 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import Button from "./components/ui/Button";  // Correct relative path
-import Card from "./components/ui/Card";      // Correct relative path
-import CardContent from "./components/ui/CardContent"; // Ensure these components exist
-import CardHeader from "./components/ui/CardHeader";   // Ensure these components exist
-import CardTitle from "./components/ui/CardTitle";     // Ensure these components exist
-import Label from "./components/ui/Label";             // Correct relative path
-
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const colors = [
   { name: 'Red', value: 'red' },
@@ -19,12 +14,31 @@ const PaintingApp = () => {
   const [color, setColor] = useState('black');
   const [drawing, setDrawing] = useState(false);
   const canvasRef = useRef(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      setCanvasSize({
+        width: window.innerWidth,
+        height: window.innerHeight - 100, // Subtracting 100px for the color buttons
+      });
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.lineWidth = 5;
-  }, []);
+    
+    // Clear canvas and redraw when size changes
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+  }, [canvasSize]);
 
   const handleMouseDown = (e) => {
     setDrawing(true);
@@ -48,32 +62,29 @@ const PaintingApp = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <Card className="w-1/2">
-        <CardHeader>
-          <CardTitle>Painting App</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <canvas
-            ref={canvasRef}
-            className="w-full h-96 border border-gray-300"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-          />
-          <div className="flex space-x-2 mt-4">
-            {colors.map((colorOption) => (
-              <Button
-                key={colorOption.name}
-                variant={colorOption.value === color ? 'primary' : 'secondary'}
-                onClick={() => setColor(colorOption.value)}
-              >
-                {colorOption.name}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col h-screen">
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="flex-grow"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      />
+      <div className="flex justify-center space-x-2 p-4">
+        {colors.map((colorOption) => (
+          <Button
+            key={colorOption.name}
+            variant={colorOption.value === color ? 'default' : 'outline'}
+            onClick={() => setColor(colorOption.value)}
+            className="w-20"
+          >
+            {colorOption.name}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 };
