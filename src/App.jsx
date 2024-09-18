@@ -22,9 +22,10 @@ const PaintingApp = () => {
 
   useEffect(() => {
     const updateCanvasSize = () => {
+      const headerHeight = 60; // Approximate height of the color buttons
       setCanvasSize({
         width: window.innerWidth,
-        height: window.innerHeight - 100, // Subtracting 100px for the color buttons
+        height: window.innerHeight - headerHeight,
       });
     };
 
@@ -38,57 +39,70 @@ const PaintingApp = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     
     // Clear canvas and redraw when size changes
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
   }, [canvasSize]);
 
-  const handleMouseDown = (e) => {
-    setDrawing(true);
+  const startDrawing = (e) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    
+    setDrawing(true);
     ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctx.moveTo(x, y);
   };
 
-  const handleMouseMove = (e) => {
+  const draw = (e) => {
     if (!drawing) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    
+    ctx.lineTo(x, y);
     ctx.strokeStyle = color;
     ctx.stroke();
   };
 
-  const handleMouseUp = () => {
+  const stopDrawing = () => {
     setDrawing(false);
   };
 
   return (
     <div className="flex flex-col h-screen">
-      <canvas
-        ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-        className="flex-grow"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-      <div className="flex justify-center space-x-2 p-4">
+      <div className="flex justify-center space-x-2 p-2 bg-gray-100">
         {colors.map((colorOption) => (
           <Button
             key={colorOption.name}
             variant={colorOption.value === color ? 'default' : 'outline'}
             onClick={() => setColor(colorOption.value)}
-            className="w-20"
+            className="w-16 h-8 text-xs"
           >
             {colorOption.name}
           </Button>
         ))}
       </div>
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="flex-grow touch-none"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        onTouchStart={startDrawing}
+        onTouchMove={draw}
+        onTouchEnd={stopDrawing}
+      />
     </div>
   );
 };
