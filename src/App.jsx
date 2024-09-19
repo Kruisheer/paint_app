@@ -1,5 +1,4 @@
 // src/PaintingApp.jsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
@@ -13,9 +12,7 @@ import {
   Tab,
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
-import Draggable from 'react-draggable';
-import { ResizableBox } from 'react-resizable';
-import 'react-resizable/css/styles.css';
+// Removed Draggable and Resizable imports
 
 // Import SVGs as raw strings
 import fishSVG from './assets/images/fish.svg?raw';
@@ -70,6 +67,7 @@ const PaintingApp = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 }); // Initial position
   const [imageSize, setImageSize] = useState({ width: 200, height: 200 }); // Initial size
+  const [positionSet, setPositionSet] = useState(false); // To track if position and scale are set
   const [tabValue, setTabValue] = useState(0); // For Tabs
 
   const colorIndexRef = useRef(0);
@@ -98,7 +96,7 @@ const PaintingApp = () => {
         ctx.lineJoin = 'round';
         
         if (index === 1) { // Middle layer
-          if (selectedImage) {
+          if (selectedImage && positionSet) {
             const img = new Image();
             img.onload = () => {
               ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous image
@@ -106,12 +104,12 @@ const PaintingApp = () => {
             };
             img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
           } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas if no image
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas if no image or position not set
           }
         }
       }
     });
-  }, [canvasSize, selectedImage, imagePosition, imageSize]);
+  }, [canvasSize, selectedImage, imagePosition, imageSize, positionSet]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -239,6 +237,7 @@ const PaintingApp = () => {
         setSelectedImage(state.selectedImage);
         setImagePosition(state.imagePosition);
         setImageSize(state.imageSize);
+        setPositionSet(true); // Since position and size are restored
         // Restore drawings
         state.drawings.forEach((dataURL, index) => {
           const img = new Image();
@@ -280,6 +279,7 @@ const PaintingApp = () => {
               setSelectedImage(img);
               setImagePosition({ x: 50, y: 50 }); // Reset position
               setImageSize({ width: 200, height: 200 }); // Reset size
+              setPositionSet(false); // Allow setting position and scale
             }}
             sx={{ textTransform: 'none' }}
           >
@@ -302,35 +302,55 @@ const PaintingApp = () => {
         </Box>
       )}
 
-      {/* Draggable and Resizable Controls */}
-      {selectedImage && (
+      {/* Position and Scale Inputs */}
+      {selectedImage && !positionSet && (
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-          {/* Draggable Controls */}
-          <Draggable
-            position={imagePosition}
-            onStop={(e, data) => {
-              setImagePosition({ x: data.x, y: data.y });
-            }}
-          >
-            <Box sx={{ border: '1px dashed grey', padding: 1, cursor: 'move' }}>
-              Drag Image
-            </Box>
-          </Draggable>
-
-          {/* Resizable Controls */}
-          <ResizableBox
-            width={imageSize.width}
-            height={imageSize.height}
-            minConstraints={[50, 50]}
-            maxConstraints={[canvasSize.width, canvasSize.height]}
-            onResizeStop={(event, { size }) => {
-              setImageSize({ width: size.width, height: size.height });
-            }}
-          >
-            <Box sx={{ border: '1px dashed grey', padding: 1, width: '100%', height: '100%', boxSizing: 'border-box' }}>
-              Resize Image
-            </Box>
-          </ResizableBox>
+          <Box>
+            <Typography variant="body2">X Position:</Typography>
+            <input
+              type="number"
+              value={imagePosition.x}
+              onChange={(e) => setImagePosition({ ...imagePosition, x: Number(e.target.value) })}
+              style={{ width: '80px' }}
+            />
+          </Box>
+          <Box>
+            <Typography variant="body2">Y Position:</Typography>
+            <input
+              type="number"
+              value={imagePosition.y}
+              onChange={(e) => setImagePosition({ ...imagePosition, y: Number(e.target.value) })}
+              style={{ width: '80px' }}
+            />
+          </Box>
+          <Box>
+            <Typography variant="body2">Width:</Typography>
+            <input
+              type="number"
+              value={imageSize.width}
+              onChange={(e) => setImageSize({ ...imageSize, width: Number(e.target.value) })}
+              style={{ width: '80px' }}
+            />
+          </Box>
+          <Box>
+            <Typography variant="body2">Height:</Typography>
+            <input
+              type="number"
+              value={imageSize.height}
+              onChange={(e) => setImageSize({ ...imageSize, height: Number(e.target.value) })}
+              style={{ width: '80px' }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setPositionSet(true)}
+              sx={{ textTransform: 'none', mt: 1 }}
+            >
+              Set Image
+            </Button>
+          </Box>
         </Box>
       )}
 
@@ -418,7 +438,6 @@ const PaintingApp = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-            >
             >
               <Icon size={24} />
               <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
