@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
 
-
 const colors = [
   { name: 'Pink', value: '#FF69B4' },
   { name: 'Purple', value: '#8A2BE2' },
@@ -39,7 +38,6 @@ const images = [
     <path d="M50 50 Q55 55, 50 60 Q45 55, 50 50" fill="none" stroke="black" stroke-width="2"/>
   </svg>` },
 ];
-
 
 const PaintingApp = () => {
   const [color, setColor] = useState('#FF69B4');
@@ -93,14 +91,15 @@ const PaintingApp = () => {
     return color;
   };
 
-  const handleMouseDown = (e) => {
+  const startDrawing = (e) => {
+    e.preventDefault();
     setDrawing(true);
     const canvas = canvasRefs[activeLayer - 1].current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.strokeStyle = getNextColor();
@@ -108,14 +107,15 @@ const PaintingApp = () => {
     }
   };
 
-  const handleMouseMove = (e) => {
+  const draw = (e) => {
+    e.preventDefault();
     if (!drawing) return;
     const canvas = canvasRefs[activeLayer - 1].current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
       ctx.lineTo(x, y);
       ctx.strokeStyle = getNextColor();
       ctx.lineWidth = brushSize;
@@ -125,7 +125,7 @@ const PaintingApp = () => {
     }
   };
 
-  const handleMouseUp = () => {
+  const stopDrawing = () => {
     setDrawing(false);
   };
 
@@ -183,6 +183,7 @@ const PaintingApp = () => {
             borderColor: 'secondary.light',
             borderRadius: 2,
             overflow: 'hidden',
+            touchAction: 'none',
           }}
         >
           {canvasRefs.map((canvasRef, index) => (
@@ -199,10 +200,13 @@ const PaintingApp = () => {
                 display: index <= activeLayer - 1 ? 'block' : 'none',
                 opacity: 1 - (activeLayer - 1 - index) * 0.2,
               }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
             />
           ))}
         </Box>
