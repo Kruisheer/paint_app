@@ -66,8 +66,6 @@ const PaintingApp = () => {
   const [activeLayer, setActiveLayer] = useState(1); // 1: Back, 2: Images, 3: Front
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
-  const [imageScale, setImageScale] = useState(1); // Scale factor starting at 1
-  const [positionSet, setPositionSet] = useState(false); // To track if position is set
   const [tabValue, setTabValue] = useState(0); // For Tabs
   const [stamps, setStamps] = useState([]); // Array to hold all stamps
   const [maxScale, setMaxScale] = useState(3); // Default maximum scale
@@ -105,9 +103,6 @@ const PaintingApp = () => {
       const calculatedMaxScale = Math.min(maxScaleX, maxScaleY, 3); // Limit to a maximum of 3x for practicality
 
       setMaxScale(calculatedMaxScale);
-      if (imageScale > calculatedMaxScale) {
-        setImageScale(calculatedMaxScale);
-      }
     }
   }, [selectedImage, canvasSize]);
 
@@ -283,13 +278,17 @@ const PaintingApp = () => {
   };
 
   const handleCanvasClick = (e) => {
-    if (selectedImage && !positionSet) {
+    if (selectedImage) {
       const canvas = canvasRefs[activeLayer - 1].current;
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
-      // Create a temporary DOM element to parse the SVG and get its intrinsic dimensions
+      // Compute imageScale based on brushSize
+      const minScale = 0.1; // Minimum scale factor
+      const imageScale = (brushSize / 50) * (maxScale - minScale) + minScale;
+
+      // Parse the SVG to get intrinsic dimensions
       const parser = new DOMParser();
       const svgDoc = parser.parseFromString(selectedImage.svg, "image/svg+xml");
       const svgElement = svgDoc.querySelector('svg');
@@ -306,9 +305,14 @@ const PaintingApp = () => {
 
       // Reset selection
       setSelectedImage(null);
-      setImageScale(1);
-      setPositionSet(true);
     }
+  };
+
+  // Compute imageScale for the preview based on brushSize
+  const getPreviewScale = () => {
+    if (!selectedImage) return 1;
+    const minScale = 0.1; // Minimum scale factor
+    return (brushSize / 50) * (maxScale - minScale) + minScale;
   };
 
   return (
@@ -343,8 +347,6 @@ const PaintingApp = () => {
             variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
             onClick={() => {
               setSelectedImage(img);
-              setImageScale(1); // Reset scale
-              setPositionSet(false); // Allow setting position for the new stamp
             }}
             sx={{
               textTransform: 'none',
@@ -371,6 +373,51 @@ const PaintingApp = () => {
           </Button>
         ))}
       </Box>
+      
+      {/* Preview and Instructions */}
+      {selectedImage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, flexDirection: 'column' }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Adjust Brush Size to Scale Stamp:
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Slider
+              value={brushSize}
+              onChange={handleBrushSizeChange}
+              min={1}
+              max={50}
+              step={1}
+              sx={{ width: 200 }}
+            />
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {/* Preview of the SVG with current brush size */}
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
+                alt="Stamp Preview"
+                style={{
+                  width: `${getPreviewScale() * 60}px`, // Scale based on brush size
+                  height: `${getPreviewScale() * 60}px`,
+                  objectFit: 'contain',
+                }}
+              />
+            </Box>
+          </Box>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Click on the canvas to place the stamp.
+          </Typography>
+        </Box>
+      )}
       
       {/* Layer and Canvas Area */}
       <Box
