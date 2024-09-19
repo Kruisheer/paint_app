@@ -71,9 +71,10 @@ const PaintingApp = () => {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
-        if (index === 0 && selectedImage) {
+        if (index === 1 && selectedImage) { // Draw on middle layer
           const img = new Image();
           img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous image
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           };
           img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
@@ -148,6 +149,21 @@ const PaintingApp = () => {
       <Typography variant="h4" align="center" color="primary" sx={{ py: 1 }}>
         Magic Painting!
       </Typography>
+      
+      {/* Image Selection Panel */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, p: 1 }}>
+        {images.map((img) => (
+          <Button
+            key={img.name}
+            variant={selectedImage && selectedImage.name === img.name ? 'contained' : 'outlined'}
+            onClick={() => setSelectedImage(img)}
+            sx={{ textTransform: 'none' }}
+          >
+            {img.name}
+          </Button>
+        ))}
+      </Box>
+      
       <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {[
@@ -175,11 +191,12 @@ const PaintingApp = () => {
             </Button>
           ))}
         </Box>
+        
         <Box
           sx={{
             flex: 1,
             position: 'relative',
-            border: 4,
+            border: '4px solid',
             borderColor: 'secondary.light',
             borderRadius: 2,
             overflow: 'hidden',
@@ -196,9 +213,9 @@ const PaintingApp = () => {
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                zIndex: index,
-                display: index <= activeLayer - 1 ? 'block' : 'none',
-                opacity: 1 - (activeLayer - 1 - index) * 0.2,
+                zIndex: index + 1, // Ensure proper stacking order
+                display: 'block', // Always display all layers
+                opacity: 1,
               }}
               onMouseDown={startDrawing}
               onMouseMove={draw}
@@ -210,6 +227,7 @@ const PaintingApp = () => {
             />
           ))}
         </Box>
+        
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
             <Button
@@ -243,6 +261,7 @@ const PaintingApp = () => {
           ))}
         </Box>
       </Box>
+      
       <Card sx={{ m: 1 }}>
         <CardHeader title="Brush Size" sx={{ py: 1 }} />
         <CardContent>
