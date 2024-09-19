@@ -317,9 +317,9 @@ const PaintingApp = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        minHeight: '100vh', // Changed from height to minHeight
         width: '100vw',
-        overflow: 'hidden',
+        overflowY: 'auto', // Allow vertical scrolling
         background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
       }}
     >
@@ -373,9 +373,24 @@ const PaintingApp = () => {
       </Box>
       
       {/* Layer and Canvas Area */}
-      <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' }, // Stack on small screens
+          flex: 1,
+          position: 'relative',
+        }}
+      >
         {/* Layer Controls */}
-        <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
+        <Box
+          sx={{
+            width: { xs: '100%', md: 80 }, // Full width on small screens
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            p: 1,
+          }}
+        >
           {[
             { layer: 1, icon: Star, label: 'Back' },
             // Removed the middle layer button
@@ -413,6 +428,7 @@ const PaintingApp = () => {
             borderRadius: 2,
             overflow: 'hidden',
             touchAction: 'none',
+            height: { xs: 300, md: 'auto' }, // Set a fixed height on small screens
           }}
         >
           {canvasRefs.map((canvasRef, index) => (
@@ -442,7 +458,15 @@ const PaintingApp = () => {
         </Box>
         
         {/* Color Palette */}
-        <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
+        <Box
+          sx={{
+            width: { xs: '100%', md: 80 }, // Full width on small screens
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            p: 1,
+          }}
+        >
           {colors.map((colorOption) => (
             <Button
               key={colorOption.name}
@@ -481,7 +505,12 @@ const PaintingApp = () => {
       </Box>
       
       {/* Brush Size Slider */}
-      <Card sx={{ m: 1 }}>
+      <Card
+        sx={{
+          m: 1,
+          order: { xs: 3, md: 2 }, // Position before Save/Load on small screens
+        }}
+      >
         <CardHeader title="Brush Size" sx={{ py: 1 }} />
         <CardContent>
           <Slider
@@ -499,19 +528,35 @@ const PaintingApp = () => {
       </Card>
       
       {/* Save/Load Buttons Positioned Below Brush Size Slider */}
-      <Box sx={{ width: '100%', mb: 2, px: 2 }}>
+      <Box
+        sx={{
+          width: '100%',
+          mb: 2,
+          px: 2,
+          order: { xs: 4, md: 3 }, // Ensure it's below the slider on small screens
+        }}
+      >
         <Tabs value={tabValue} onChange={handleTabChange} centered>
           <Tab label="Save/Load" />
         </Tabs>
         <TabPanel value={tabValue} index={0}>
           {/* Save and Load Buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' }, // Stack on extra-small screens
+              justifyContent: 'center',
+              gap: 2,
+              p: 1,
+              flexWrap: 'wrap',
+            }}
+          >
             {/* Save as Image */}
             <Button
               variant="contained"
               color="success"
               onClick={handleSaveAsImage}
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
             >
               Save as Image
             </Button>
@@ -521,7 +566,7 @@ const PaintingApp = () => {
               variant="contained"
               color="info"
               onClick={handleSaveProject}
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
             >
               Save Project
             </Button>
@@ -531,7 +576,7 @@ const PaintingApp = () => {
               variant="contained"
               color="primary"
               component="label"
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
             >
               Load Image
               <input
@@ -547,7 +592,7 @@ const PaintingApp = () => {
               variant="contained"
               color="secondary"
               component="label"
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
             >
               Load Project
               <input
