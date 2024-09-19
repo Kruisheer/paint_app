@@ -210,24 +210,26 @@ const PaintingApp = () => {
             overflow: 'hidden',
           }}
         >
-          {canvasRefs.map((canvasRef, index) => (
-            <canvas
-              key={index}
-              ref={canvasRef}
-              width={canvasSize.width}
-              height={canvasSize.height}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                zIndex: index,
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            />
-          ))}
+{canvasRefs.map((canvasRef, index) => (
+  <canvas
+    key={index}
+    ref={canvasRef}
+    width={canvasSize.width}
+    height={canvasSize.height}
+    style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      zIndex: index,
+      display: index <= activeLayer - 1 ? 'block' : 'none',
+      opacity: 1 - (activeLayer - 1 - index) * 0.2,
+    }}
+    onMouseDown={handleMouseDown}
+    onMouseMove={handleMouseMove}
+    onMouseUp={handleMouseUp}
+    onMouseLeave={handleMouseUp}
+  />
+))}
         </Box>
         <Box sx={{ width: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
