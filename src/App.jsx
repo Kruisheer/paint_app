@@ -343,193 +343,24 @@ const PaintingApp = () => {
               width: 80,
               height: 80,
               padding: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             aria-label={`Select ${img.name} stamp`}
           >
             <Box
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(img.svg) }}
               sx={{
-                width: '100%',
-                height: '100%',
-                transform: 'scale(0.8)',
-                transformOrigin: 'center',
+                maxWidth: '60%',
+                maxHeight: '60%',
               }}
             />
           </Button>
         ))}
       </Box>
       
-      {/* Scale Slider with Preview and Save/Load Buttons */}
-      {selectedImage && !positionSet && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, flexDirection: 'column' }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Adjust Scale:
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Slider
-              value={imageScale}
-              onChange={(e, newValue) => setImageScale(newValue)}
-              min={0.5}
-              max={maxScale}
-              step={0.1}
-              sx={{ width: 200 }}
-            />
-            <Box
-              sx={{
-                width: 60,
-                height: 60,
-                ml: 2,
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                overflow: 'hidden',
-              }}
-            >
-              {/* Preview of the SVG with current scale */}
-              <Box
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedImage.svg) }}
-                sx={{
-                  width: `${60 * imageScale}px`,
-                  height: `${60 * imageScale}px`,
-                  transform: `scale(${imageScale})`,
-                  transformOrigin: 'center',
-                }}
-              />
-            </Box>
-          </Box>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Click on the canvas to place the stamp.
-          </Typography>
-          
-          {/* Tabs for Save/Load Controls placed under the slider */}
-          <Box sx={{ width: '100%', mt: 2 }}>
-            <Tabs value={tabValue} onChange={handleTabChange} centered>
-              <Tab label="Save/Load" />
-            </Tabs>
-            <TabPanel value={tabValue} index={0}>
-              {/* Save and Load Buttons */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-                {/* Save as Image */}
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleSaveAsImage}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Save as Image
-                </Button>
-    
-                {/* Save Project (JSON) */}
-                <Button
-                  variant="contained"
-                  color="info"
-                  onClick={handleSaveProject}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Save Project
-                </Button>
-    
-                {/* Load Image */}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  component="label"
-                  sx={{ textTransform: 'none' }}
-                >
-                  Load Image
-                  <input
-                    type="file"
-                    accept="image/png"
-                    hidden
-                    onChange={handleLoadImage}
-                  />
-                </Button>
-    
-                {/* Load Project */}
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  component="label"
-                  sx={{ textTransform: 'none' }}
-                >
-                  Load Project
-                  <input
-                    type="file"
-                    accept="application/json"
-                    hidden
-                    onChange={handleLoadProject}
-                  />
-                </Button>
-              </Box>
-            </TabPanel>
-          </Box>
-        </Box>
-      )}
-      
-      {/* Tabs for Save/Load Controls when no scale adjustment is needed */}
-      {!selectedImage && (
-        <Box sx={{ width: '100%', mt: 2 }}>
-          <Tabs value={tabValue} onChange={handleTabChange} centered>
-            <Tab label="Save/Load" />
-          </Tabs>
-          <TabPanel value={tabValue} index={0}>
-            {/* Save and Load Buttons */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-              {/* Save as Image */}
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleSaveAsImage}
-                sx={{ textTransform: 'none' }}
-              >
-                Save as Image
-              </Button>
-  
-              {/* Save Project (JSON) */}
-              <Button
-                variant="contained"
-                color="info"
-                onClick={handleSaveProject}
-                sx={{ textTransform: 'none' }}
-              >
-                Save Project
-              </Button>
-  
-              {/* Load Image */}
-              <Button
-                variant="contained"
-                color="primary"
-                component="label"
-                sx={{ textTransform: 'none' }}
-              >
-                Load Image
-                <input
-                  type="file"
-                  accept="image/png"
-                  hidden
-                  onChange={handleLoadImage}
-                />
-              </Button>
-  
-              {/* Load Project */}
-              <Button
-                variant="contained"
-                color="secondary"
-                component="label"
-                sx={{ textTransform: 'none' }}
-              >
-                Load Project
-                <input
-                  type="file"
-                  accept="application/json"
-                  hidden
-                  onChange={handleLoadProject}
-                />
-              </Button>
-            </Box>
-          </TabPanel>
-        </Box>
-      )}
-
+      {/* Layer and Canvas Area */}
       <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
         {/* Layer Controls */}
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
@@ -616,6 +447,9 @@ const PaintingApp = () => {
                 '&:hover': {
                   backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : colorOption.value,
                 },
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
               aria-label={`Select ${colorOption.name} color`}
             >
@@ -651,6 +485,69 @@ const PaintingApp = () => {
           </Box>
         </CardContent>
       </Card>
+      
+      {/* Save/Load Buttons Positioned Below Brush Size Slider */}
+      <Box sx={{ width: '100%', mb: 2, px: 2 }}>
+        <Tabs value={tabValue} onChange={handleTabChange} centered>
+          <Tab label="Save/Load" />
+        </Tabs>
+        <TabPanel value={tabValue} index={0}>
+          {/* Save and Load Buttons */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
+            {/* Save as Image */}
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSaveAsImage}
+              sx={{ textTransform: 'none' }}
+            >
+              Save as Image
+            </Button>
+
+            {/* Save Project (JSON) */}
+            <Button
+              variant="contained"
+              color="info"
+              onClick={handleSaveProject}
+              sx={{ textTransform: 'none' }}
+            >
+              Save Project
+            </Button>
+
+            {/* Load Image */}
+            <Button
+              variant="contained"
+              color="primary"
+              component="label"
+              sx={{ textTransform: 'none' }}
+            >
+              Load Image
+              <input
+                type="file"
+                accept="image/png"
+                hidden
+                onChange={handleLoadImage}
+              />
+            </Button>
+
+            {/* Load Project */}
+            <Button
+              variant="contained"
+              color="secondary"
+              component="label"
+              sx={{ textTransform: 'none' }}
+            >
+              Load Project
+              <input
+                type="file"
+                accept="application/json"
+                hidden
+                onChange={handleLoadProject}
+              />
+            </Button>
+          </Box>
+        </TabPanel>
+      </Box>
     </Box>
   );
 };
