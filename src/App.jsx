@@ -419,6 +419,7 @@ const PaintingApp = () => {
                 justifyContent: 'center',
               }}
             >
+            >
               <Icon size={24} />
               <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
             </Button>
