@@ -5,7 +5,8 @@ import CardContent from "./components/ui/CardContent"; // Ensure these component
 import CardHeader from "./components/ui/CardHeader";   // Ensure these components exist
 import CardTitle from "./components/ui/CardTitle";     // Ensure these components exist
 import Label from "./components/ui/Label";             // Correct relative path
-import { Slider } from "@/components/ui/slider";
+#import { Slider } from "@/components/ui/slider";
+import Slider from "./components/ui/Slider";
 import { Star, Sun, Moon } from "lucide-react";
 
 const colors = [
