@@ -95,24 +95,24 @@ const PaintingApp = () => {
     return color;
   };
 
-  const handleMouseDown = (e) => {
-    setDrawing(true);
-    const canvas = canvasRefs[activeLayer - 1].current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.strokeStyle = getNextColor();
-    }
-  };
+const handleMouseDown = (e) => {
+  setDrawing(true);
+  const canvas = canvasRefs[activeLayer - 1].current;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = getNextColor();
+  }
+};
 
-  const handleMouseMove = (e) => {
-    if (!drawing) return;
-    const canvas = canvasRefs[activeLayer - 1].current;
-    if (canvas) {
+const handleMouseMove = (e) => {
+  if (!drawing) return;
+  const canvas = canvasRefs[activeLayer - 1].current;
+  if (canvas) {
       const ctx = canvas.getContext('2d');
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
