@@ -13,7 +13,6 @@ import {
   Tab,
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
-import DOMPurify from 'dompurify';
 
 // Import SVGs as raw strings
 import fishSVG from './assets/images/fish.svg?raw';
@@ -68,8 +67,6 @@ const PaintingApp = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageScale, setImageScale] = useState(1); // Scale factor starting at 1
   const [positionSet, setPositionSet] = useState(false); // To track if position is set
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 }); // SVG intrinsic dimensions
-  const [maxScale, setMaxScale] = useState(3); // Maximum allowable scale based on canvas size
   const [tabValue, setTabValue] = useState(0); // For Tabs
   const [stamps, setStamps] = useState([]); // Array to hold all stamps
 
@@ -77,27 +74,6 @@ const PaintingApp = () => {
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
   const containerRef = useRef(null);
 
-  // Load SVG dimensions and calculate max scale
-  useEffect(() => {
-    if (selectedImage) {
-      const img = new Image();
-      img.onload = () => {
-        setImageDimensions({ width: img.width, height: img.height });
-
-        // Calculate maximum scale based on canvas size
-        const calculatedMaxScale = Math.min(
-          canvasSize.width / img.width,
-          canvasSize.height / img.height,
-          3 // Ensure max scale doesn't exceed 3x
-        );
-        setMaxScale(calculatedMaxScale);
-        setImageScale(1); // Reset scale to default
-      };
-      img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
-    }
-  }, [selectedImage, canvasSize.width, canvasSize.height]);
-
-  // Update canvas size on window resize
   useEffect(() => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
@@ -111,7 +87,6 @@ const PaintingApp = () => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
-  // Render all stamps on the middle canvas
   useEffect(() => {
     const canvas = canvasRefs[1].current; // Middle layer for images
     if (canvas) {
@@ -121,22 +96,18 @@ const PaintingApp = () => {
       stamps.forEach((stamp) => {
         const img = new Image();
         img.onload = () => {
-          // Calculate top-left coordinates to center the SVG
-          const drawX = stamp.x - (imageDimensions.width * stamp.scale) / 2;
-          const drawY = stamp.y - (imageDimensions.height * stamp.scale) / 2;
-
           ctx.drawImage(
             img,
-            drawX,
-            drawY,
-            imageDimensions.width * stamp.scale,
-            imageDimensions.height * stamp.scale
+            stamp.x,
+            stamp.y,
+            img.width * stamp.scale,
+            img.height * stamp.scale
           );
         };
         img.src = `data:image/svg+xml;base64,${btoa(stamp.svg)}`;
       });
     }
-  }, [stamps, canvasSize, imageDimensions]);
+  }, [stamps, canvasSize]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -291,19 +262,11 @@ const PaintingApp = () => {
     if (selectedImage && !positionSet) {
       const canvas = canvasRefs[activeLayer - 1].current;
       const rect = canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-      // Calculate top-left coordinates to center the SVG
-      const topLeftX = clickX - (imageDimensions.width * imageScale) / 2;
-      const topLeftY = clickY - (imageDimensions.height * imageScale) / 2;
-
-      // Ensure the SVG doesn't go out of canvas bounds
-      const adjustedX = Math.max(0 + (imageDimensions.width * imageScale) / 2, Math.min(clickX, canvasSize.width - (imageDimensions.width * imageScale) / 2));
-      const adjustedY = Math.max(0 + (imageDimensions.height * imageScale) / 2, Math.min(clickY, canvasSize.height - (imageDimensions.height * imageScale) / 2));
-
-      // Add the new stamp to the stamps array with centered position
-      setStamps([...stamps, { svg: selectedImage.svg, x: adjustedX, y: adjustedY, scale: imageScale }]);
+      // Add the new stamp to the stamps array
+      setStamps([...stamps, { svg: selectedImage.svg, x, y, scale: imageScale }]);
 
       // Reset selection
       setSelectedImage(null);
@@ -340,7 +303,6 @@ const PaintingApp = () => {
               setPositionSet(false); // Allow setting position for the new stamp
             }}
             sx={{ textTransform: 'none' }}
-            aria-label={`Select ${img.name} stamp`}
           >
             {img.name}
           </Button>
@@ -358,7 +320,7 @@ const PaintingApp = () => {
               value={imageScale}
               onChange={(e, newValue) => setImageScale(newValue)}
               min={0.5}
-              max={maxScale}
+              max={3}
               step={0.1}
               sx={{ width: 200 }}
             />
@@ -374,7 +336,7 @@ const PaintingApp = () => {
             >
               {/* Preview of the SVG with current scale */}
               <Box
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedImage.svg) }}
+                dangerouslySetInnerHTML={{ __html: selectedImage.svg }}
                 sx={{
                   width: `${60 * imageScale}px`,
                   height: `${60 * imageScale}px`,
@@ -404,7 +366,6 @@ const PaintingApp = () => {
               color="success"
               onClick={handleSaveAsImage}
               sx={{ textTransform: 'none' }}
-              aria-label="Save as Image"
             >
               Save as Image
             </Button>
@@ -415,7 +376,6 @@ const PaintingApp = () => {
               color="info"
               onClick={handleSaveProject}
               sx={{ textTransform: 'none' }}
-              aria-label="Save Project"
             >
               Save Project
             </Button>
@@ -426,7 +386,6 @@ const PaintingApp = () => {
               color="primary"
               component="label"
               sx={{ textTransform: 'none' }}
-              aria-label="Load Image"
             >
               Load Image
               <input
@@ -443,7 +402,6 @@ const PaintingApp = () => {
               color="secondary"
               component="label"
               sx={{ textTransform: 'none' }}
-              aria-label="Load Project"
             >
               Load Project
               <input
@@ -479,7 +437,6 @@ const PaintingApp = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              aria-label={`Select ${label} layer`}
             >
               <Icon size={24} />
               <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
@@ -544,7 +501,6 @@ const PaintingApp = () => {
                   backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : colorOption.value,
                 },
               }}
-              aria-label={`Select ${colorOption.name} color`}
             >
               {colorOption.value === 'rainbow' && (
                 <Box
