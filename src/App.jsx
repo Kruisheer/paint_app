@@ -1,51 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
+  Box,
+  Typography,
+  Slider,
   Card,
   CardContent,
   CardHeader,
-  Slider,
-  Typography,
-  Grid,
-  Box,
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
 
-const colors = [
-  { name: 'Pink', value: '#FF69B4' },
-  { name: 'Purple', value: '#8A2BE2' },
-  { name: 'Yellow', value: '#FFD700' },
-  { name: 'Sky Blue', value: '#87CEEB' },
-  { name: 'Lime Green', value: '#32CD32' },
-  { name: 'Rainbow', value: 'rainbow' },
-];
-
-const rainbowColors = ['#FF69B4', '#FFD700', '#87CEEB', '#32CD32', '#8A2BE2', '#FFA500'];
-
-const images = [
-  { name: 'Fish', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path d="M70 50 C90 30, 90 70, 70 50 L30 30 C10 40, 10 60, 30 70 Z" fill="none" stroke="black" stroke-width="2"/>
-    <circle cx="75" cy="50" r="3" />
-  </svg>` },
-  { name: 'Unicorn', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path d="M30 70 Q40 60, 50 70 Q60 80, 70 70 L80 40 L60 20 L40 40 Z" fill="none" stroke="black" stroke-width="2"/>
-    <path d="M60 20 L70 10" fill="none" stroke="black" stroke-width="2"/>
-    <circle cx="45" cy="45" r="3" />
-  </svg>` },
-  { name: 'Cheetah', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 50 Q30 20, 50 20 Q70 20, 80 50 Q70 80, 50 80 Q30 80, 20 50 Z" fill="none" stroke="black" stroke-width="2"/>
-    <circle cx="35" cy="40" r="3" />
-    <circle cx="65" cy="40" r="3" />
-    <path d="M50 50 Q55 55, 50 60 Q45 55, 50 50" fill="none" stroke="black" stroke-width="2"/>
-  </svg>` },
-];
+// ... (other imports and constants)
 
 const PaintingApp = () => {
   const [color, setColor] = useState('#FF69B4');
   const [brushSize, setBrushSize] = useState(10);
   const [drawing, setDrawing] = useState(false);
   const [activeLayer, setActiveLayer] = useState(1);
-  const [canvasSize, setCanvasSize] = useState({ width: 300, height: 200 });
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
   const colorIndexRef = useRef(0);
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
@@ -55,10 +27,7 @@ const PaintingApp = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setCanvasSize({
-          width: Math.max(width - 200, 1),
-          height: Math.max(height - 200, 1),
-        });
+        setCanvasSize({ width, height: height - 150 }); // Subtract space for controls
       }
     };
 
@@ -72,8 +41,8 @@ const PaintingApp = () => {
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         
         if (index === 0 && selectedImage) {
           const img = new Image();
@@ -84,24 +53,7 @@ const PaintingApp = () => {
         }
       }
     });
-  }, [canvasSize, brushSize, selectedImage]);
-  const mergeLayers = () => {
-  const targetCanvas = canvasRefs[activeLayer - 1].current;
-  const targetCtx = targetCanvas.getContext('2d');
-
-  for (let i = 0; i < activeLayer - 1; i++) {
-    const sourceCanvas = canvasRefs[i].current;
-    targetCtx.globalAlpha = 1 - (activeLayer - 1 - i) * 0.2;
-    targetCtx.drawImage(sourceCanvas, 0, 0);
-  }
-  targetCtx.globalAlpha = 1;
-};
-
-// Call mergeLayers in the useEffect hook when activeLayer changes
-useEffect(() => {
-  mergeLayers();
-}, [activeLayer]);
-  
+  }, [canvasSize, selectedImage]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -112,24 +64,25 @@ useEffect(() => {
     return color;
   };
 
-const handleMouseDown = (e) => {
-  setDrawing(true);
-  const canvas = canvasRefs[activeLayer - 1].current;
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.strokeStyle = getNextColor();
-  }
-};
+  const handleMouseDown = (e) => {
+    setDrawing(true);
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.strokeStyle = getNextColor();
+      ctx.lineWidth = brushSize;
+    }
+  };
 
-const handleMouseMove = (e) => {
-  if (!drawing) return;
-  const canvas = canvasRefs[activeLayer - 1].current;
-  if (canvas) {
+  const handleMouseMove = (e) => {
+    if (!drawing) return;
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
       const ctx = canvas.getContext('2d');
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -137,8 +90,6 @@ const handleMouseMove = (e) => {
       ctx.lineTo(x, y);
       ctx.strokeStyle = getNextColor();
       ctx.lineWidth = brushSize;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -160,38 +111,16 @@ const handleMouseMove = (e) => {
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
         background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
       }}
     >
-      <Typography variant="h2" align="center" color="primary" sx={{ py: 2 }}>
+      <Typography variant="h4" align="center" color="primary" sx={{ py: 1 }}>
         Magic Painting!
       </Typography>
-      <Grid container justifyContent="center" spacing={2} sx={{ mb: 2 }}>
-        {images.map((image) => (
-          <Grid item key={image.name}>
-            <Button
-              onClick={() => setSelectedImage(image)}
-              sx={{
-                width: 96,
-                height: 96,
-                p: 1,
-                borderRadius: 4,
-                backgroundColor: selectedImage === image ? 'primary.main' : 'white',
-                '&:hover': {
-                  backgroundColor: selectedImage === image ? 'primary.dark' : 'grey.200',
-                },
-              }}
-            >
-              <Box
-                dangerouslySetInnerHTML={{ __html: image.svg }}
-                sx={{ width: '100%', height: '100%' }}
-              />
-            </Button>
-          </Grid>
-        ))}
-      </Grid>
-      <Box sx={{ display: 'flex', flex: 1 }}>
-        <Box sx={{ width: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
+      <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
+        <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {[
             { layer: 1, icon: Star, label: 'Back' },
             { layer: 2, icon: Sun, label: 'Middle' },
@@ -202,18 +131,18 @@ const handleMouseMove = (e) => {
               variant={layer === activeLayer ? 'contained' : 'outlined'}
               onClick={() => setActiveLayer(layer)}
               sx={{
-                width: 80,
-                height: 80,
-                borderRadius: 4,
-                mb: 2,
+                width: 60,
+                height: 60,
+                borderRadius: 2,
+                mb: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Icon size={32} />
-              <Typography variant="caption" sx={{ mt: 1 }}>{label}</Typography>
+              <Icon size={24} />
+              <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
             </Button>
           ))}
         </Box>
@@ -221,44 +150,44 @@ const handleMouseMove = (e) => {
           sx={{
             flex: 1,
             position: 'relative',
-            border: 8,
+            border: 4,
             borderColor: 'secondary.light',
             borderRadius: 2,
             overflow: 'hidden',
           }}
         >
-{canvasRefs.map((canvasRef, index) => (
-  <canvas
-    key={index}
-    ref={canvasRef}
-    width={canvasSize.width}
-    height={canvasSize.height}
-    style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: index,
-      display: index <= activeLayer - 1 ? 'block' : 'none',
-      opacity: 1 - (activeLayer - 1 - index) * 0.2,
-    }}
-    onMouseDown={handleMouseDown}
-    onMouseMove={handleMouseMove}
-    onMouseUp={handleMouseUp}
-    onMouseLeave={handleMouseUp}
-  />
-))}
+          {canvasRefs.map((canvasRef, index) => (
+            <canvas
+              key={index}
+              ref={canvasRef}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                zIndex: index,
+                display: index <= activeLayer - 1 ? 'block' : 'none',
+                opacity: 1 - (activeLayer - 1 - index) * 0.2,
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+          ))}
         </Box>
-        <Box sx={{ width: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
+        <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
             <Button
               key={colorOption.name}
               variant={colorOption.value === color ? 'contained' : 'outlined'}
               onClick={() => setColor(colorOption.value)}
               sx={{
-                width: 80,
-                height: 80,
+                width: 60,
+                height: 60,
                 borderRadius: '50%',
-                mb: 2,
+                mb: 1,
                 backgroundColor: colorOption.value === 'rainbow' ? 'white' : colorOption.value,
                 border: colorOption.value === color ? '4px solid' : 'none',
                 borderColor: 'secondary.main',
@@ -281,8 +210,8 @@ const handleMouseMove = (e) => {
           ))}
         </Box>
       </Box>
-      <Card sx={{ maxWidth: 400, mx: 'auto', my: 2 }}>
-        <CardHeader title="Brush Size" />
+      <Card sx={{ m: 1 }}>
+        <CardHeader title="Brush Size" sx={{ py: 1 }} />
         <CardContent>
           <Slider
             value={brushSize}
