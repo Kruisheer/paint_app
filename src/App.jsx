@@ -13,7 +13,6 @@ import {
   Tab,
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
-// Removed Draggable and Resizable imports
 
 // Import SVGs as raw strings
 import fishSVG from './assets/images/fish.svg?raw';
@@ -66,10 +65,10 @@ const PaintingApp = () => {
   const [activeLayer, setActiveLayer] = useState(1);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 }); // Initial position
   const [imageScale, setImageScale] = useState(1); // Scale factor starting at 1
   const [positionSet, setPositionSet] = useState(false); // To track if position is set
   const [tabValue, setTabValue] = useState(0); // For Tabs
+  const [stamps, setStamps] = useState([]); // Array to hold all stamps
 
   const colorIndexRef = useRef(0);
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
@@ -89,34 +88,26 @@ const PaintingApp = () => {
   }, []);
 
   useEffect(() => {
-    canvasRefs.forEach((canvasRef, index) => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        if (index === 1) { // Middle layer
-          if (selectedImage && positionSet) {
-            const img = new Image();
-            img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous image
-              ctx.drawImage(
-                img,
-                imagePosition.x,
-                imagePosition.y,
-                img.width * imageScale,
-                img.height * imageScale
-              );
-            };
-            img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
-          } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas if no image or position not set
-          }
-        }
-      }
-    });
-  }, [canvasSize, selectedImage, imagePosition, imageScale, positionSet]);
+    const canvas = canvasRefs[1].current; // Middle layer for images
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous stamps
+
+      stamps.forEach((stamp) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(
+            img,
+            stamp.x,
+            stamp.y,
+            img.width * stamp.scale,
+            img.height * stamp.scale
+          );
+        };
+        img.src = `data:image/svg+xml;base64,${btoa(stamp.svg)}`;
+      });
+    }
+  }, [stamps, canvasSize]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -182,7 +173,7 @@ const PaintingApp = () => {
     const tempCtx = tempCanvas.getContext('2d');
 
     // Draw each layer onto the temporary canvas
-    canvasRefs.forEach((canvasRef) => {
+    canvasRefs.forEach((canvasRef, index) => {
       const canvas = canvasRef.current;
       if (canvas) {
         tempCtx.drawImage(canvas, 0, 0);
@@ -199,9 +190,7 @@ const PaintingApp = () => {
 
   const handleSaveProject = () => {
     const state = {
-      selectedImage,
-      imagePosition,
-      imageScale,
+      stamps,
       drawings: canvasRefs.map((canvasRef) => canvasRef.current.toDataURL()),
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
@@ -213,50 +202,59 @@ const PaintingApp = () => {
 
   const handleLoadImage = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && file.type === 'image/png') {
       const img = new Image();
       const reader = new FileReader();
       reader.onload = (event) => {
         img.onload = () => {
           // Clear all canvases
-          canvasRefs.forEach((canvasRef, index) => {
+          canvasRefs.forEach((canvasRef) => {
             const ctx = canvasRef.current.getContext('2d');
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
           });
-          // Draw the loaded image onto the topmost canvas
-          const topCanvas = canvasRefs[2].current; // Front layer
+          // Draw the loaded image onto the topmost canvas (front layer)
+          const topCanvas = canvasRefs[2].current;
           const ctx = topCanvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvasSize.width, canvasSize.height);
         };
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
+    } else {
+      alert('Please upload a valid PNG image.');
     }
   };
 
   const handleLoadProject = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && file.type === 'application/json') {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const state = JSON.parse(event.target.result);
-        // Restore selectedImage, position, and scale
-        setSelectedImage(state.selectedImage);
-        setImagePosition(state.imagePosition);
-        setImageScale(state.imageScale);
-        setPositionSet(true); // Since position and scale are restored
-        // Restore drawings
-        state.drawings.forEach((dataURL, index) => {
-          const img = new Image();
-          img.onload = () => {
-            const ctx = canvasRefs[index].current.getContext('2d');
-            ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.drawImage(img, 0, 0);
-          };
-          img.src = dataURL;
-        });
+        try {
+          const state = JSON.parse(event.target.result);
+          if (state.stamps && state.drawings) {
+            setStamps(state.stamps);
+
+            // Restore drawings on respective canvases
+            state.drawings.forEach((dataURL, index) => {
+              const img = new Image();
+              img.onload = () => {
+                const ctx = canvasRefs[index].current.getContext('2d');
+                ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+                ctx.drawImage(img, 0, 0);
+              };
+              img.src = dataURL;
+            });
+          } else {
+            alert('Invalid project file.');
+          }
+        } catch (error) {
+          alert('Error loading project. Please ensure the file is a valid JSON.');
+        }
       };
       reader.readAsText(file);
+    } else {
+      alert('Please upload a valid JSON project file.');
     }
   };
 
@@ -266,7 +264,13 @@ const PaintingApp = () => {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      setImagePosition({ x, y });
+
+      // Add the new stamp to the stamps array
+      setStamps([...stamps, { svg: selectedImage.svg, x, y, scale: imageScale }]);
+
+      // Reset selection
+      setSelectedImage(null);
+      setImageScale(1);
       setPositionSet(true);
     }
   };
@@ -292,12 +296,11 @@ const PaintingApp = () => {
         {images.map((img) => (
           <Button
             key={img.name}
-            variant={selectedImage && selectedImage.name === img.name ? 'contained' : 'outlined'}
+            variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
             onClick={() => {
               setSelectedImage(img);
-              setImagePosition({ x: 50, y: 50 }); // Reset position
               setImageScale(1); // Reset scale
-              setPositionSet(false); // Allow setting position
+              setPositionSet(false); // Allow setting position for the new stamp
             }}
             sx={{ textTransform: 'none' }}
           >
@@ -306,43 +309,46 @@ const PaintingApp = () => {
         ))}
       </Box>
       
-      {/* Clear Image Button */}
-      {selectedImage && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, p: 1 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => setSelectedImage(null)}
-            sx={{ textTransform: 'none' }}
-          >
-            Clear Image
-          </Button>
-        </Box>
-      )}
-
-      {/* Prompt to Click on Canvas to Set Position */}
+      {/* Scale Slider with Preview */}
       {selectedImage && !positionSet && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 1 }}>
-          <Typography variant="body2" color="textSecondary">
-            Click on the canvas to set the image position.
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, flexDirection: 'column' }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Adjust Scale:
           </Typography>
-        </Box>
-      )}
-
-      {/* Scale Slider */}
-      {selectedImage && positionSet && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1 }}>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            Scale:
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Slider
+              value={imageScale}
+              onChange={(e, newValue) => setImageScale(newValue)}
+              min={0.5}
+              max={3}
+              step={0.1}
+              sx={{ width: 200 }}
+            />
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                ml: 2,
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Preview of the SVG with current scale */}
+              <Box
+                dangerouslySetInnerHTML={{ __html: selectedImage.svg }}
+                sx={{
+                  width: `${60 * imageScale}px`,
+                  height: `${60 * imageScale}px`,
+                  transform: `scale(${imageScale})`,
+                  transformOrigin: 'top left',
+                }}
+              />
+            </Box>
+          </Box>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Click on the canvas to place the stamp.
           </Typography>
-          <Slider
-            value={imageScale}
-            onChange={(e, newValue) => setImageScale(newValue)}
-            min={0.5}
-            max={3}
-            step={0.1}
-            sx={{ width: 200 }}
-          />
         </Box>
       )}
 
@@ -471,7 +477,7 @@ const PaintingApp = () => {
               onTouchStart={startDrawing}
               onTouchMove={draw}
               onTouchEnd={stopDrawing}
-              onClick={handleCanvasClick} // Handle position setting
+              onClick={handleCanvasClick} // Handle stamp placement
             />
           ))}
         </Box>
