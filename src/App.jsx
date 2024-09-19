@@ -10,7 +10,36 @@ import {
 } from '@mui/material';
 import { Star, Sun, Moon } from 'lucide-react';
 
-// ... (other imports and constants)
+
+const colors = [
+  { name: 'Pink', value: '#FF69B4' },
+  { name: 'Purple', value: '#8A2BE2' },
+  { name: 'Yellow', value: '#FFD700' },
+  { name: 'Sky Blue', value: '#87CEEB' },
+  { name: 'Lime Green', value: '#32CD32' },
+  { name: 'Rainbow', value: 'rainbow' },
+];
+
+const rainbowColors = ['#FF69B4', '#FFD700', '#87CEEB', '#32CD32', '#8A2BE2', '#FFA500'];
+
+const images = [
+  { name: 'Fish', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M70 50 C90 30, 90 70, 70 50 L30 30 C10 40, 10 60, 30 70 Z" fill="none" stroke="black" stroke-width="2"/>
+    <circle cx="75" cy="50" r="3" />
+  </svg>` },
+  { name: 'Unicorn', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M30 70 Q40 60, 50 70 Q60 80, 70 70 L80 40 L60 20 L40 40 Z" fill="none" stroke="black" stroke-width="2"/>
+    <path d="M60 20 L70 10" fill="none" stroke="black" stroke-width="2"/>
+    <circle cx="45" cy="45" r="3" />
+  </svg>` },
+  { name: 'Cheetah', svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 50 Q30 20, 50 20 Q70 20, 80 50 Q70 80, 50 80 Q30 80, 20 50 Z" fill="none" stroke="black" stroke-width="2"/>
+    <circle cx="35" cy="40" r="3" />
+    <circle cx="65" cy="40" r="3" />
+    <path d="M50 50 Q55 55, 50 60 Q45 55, 50 50" fill="none" stroke="black" stroke-width="2"/>
+  </svg>` },
+];
+
 
 const PaintingApp = () => {
   const [color, setColor] = useState('#FF69B4');
