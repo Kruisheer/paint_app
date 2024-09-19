@@ -1,14 +1,15 @@
-import { useState, useRef, useEffect } from "react";
-//import Button from "./components/ui/Button";  // Correct relative path
-// import Button from "@mui/components/ui/Button";  // Correct relative path
-import Button from "@mui/material/Button";
-import Card from "./components/ui/Card";      // Correct relative path
-import CardContent from "./components/ui/CardContent"; // Ensure these components exist
-import CardHeader from "./components/ui/CardHeader";   // Ensure these components exist
-import CardTitle from "./components/ui/CardTitle";     // Ensure these components exist
-import Label from "./components/ui/Label";             // Correct relative path
-import Slider from "./components/ui/Slider";
-import { Star, Sun, Moon } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Slider,
+  Typography,
+  Grid,
+  Box,
+} from '@mui/material';
+import { Star, Sun, Moon } from 'lucide-react';
 
 const colors = [
   { name: 'Pink', value: '#FF69B4' },
@@ -131,26 +132,49 @@ const PaintingApp = () => {
     setDrawing(false);
   };
 
-  const handleBrushSizeChange = (value) => {
-    setBrushSize(value[0]);
+  const handleBrushSizeChange = (event, newValue) => {
+    setBrushSize(newValue);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-pink-100 to-purple-100" ref={containerRef}>
-      <h1 className="text-4xl font-bold text-center text-pink-500 py-4">Magic Painting!</h1>
-      <div className="flex justify-center space-x-4 mb-4">
+    <Box
+      ref={containerRef}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
+      }}
+    >
+      <Typography variant="h2" align="center" color="primary" sx={{ py: 2 }}>
+        Magic Painting!
+      </Typography>
+      <Grid container justifyContent="center" spacing={2} sx={{ mb: 2 }}>
         {images.map((image) => (
-          <Button
-            key={image.name}
-            onClick={() => setSelectedImage(image)}
-            className={`w-24 h-24 p-2 rounded-xl ${selectedImage === image ? 'bg-purple-500' : 'bg-white'}`}
-          >
-            <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: image.svg }} />
-          </Button>
+          <Grid item key={image.name}>
+            <Button
+              onClick={() => setSelectedImage(image)}
+              sx={{
+                width: 96,
+                height: 96,
+                p: 1,
+                borderRadius: 4,
+                backgroundColor: selectedImage === image ? 'primary.main' : 'white',
+                '&:hover': {
+                  backgroundColor: selectedImage === image ? 'primary.dark' : 'grey.200',
+                },
+              }}
+            >
+              <Box
+                dangerouslySetInnerHTML={{ __html: image.svg }}
+                sx={{ width: '100%', height: '100%' }}
+              />
+            </Button>
+          </Grid>
         ))}
-      </div>
-      <div className="flex flex-1">
-        <div className="w-24 flex flex-col justify-center space-y-4 p-2">
+      </Grid>
+      <Box sx={{ display: 'flex', flex: 1 }}>
+        <Box sx={{ width: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {[
             { layer: 1, icon: Star, label: 'Back' },
             { layer: 2, icon: Sun, label: 'Middle' },
@@ -158,63 +182,103 @@ const PaintingApp = () => {
           ].map(({ layer, icon: Icon, label }) => (
             <Button
               key={layer}
-              variant={layer === activeLayer ? 'default' : 'outline'}
+              variant={layer === activeLayer ? 'contained' : 'outlined'}
               onClick={() => setActiveLayer(layer)}
-              className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center ${layer === activeLayer ? 'bg-purple-500 text-white' : 'bg-white text-purple-500'}`}
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: 4,
+                mb: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
               <Icon size={32} />
-              <span className="mt-2 text-xs">{label}</span>
+              <Typography variant="caption" sx={{ mt: 1 }}>{label}</Typography>
             </Button>
           ))}
-        </div>
-        <div className="flex-1 relative border-8 border-purple-300 rounded-lg overflow-hidden">
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            position: 'relative',
+            border: 8,
+            borderColor: 'secondary.light',
+            borderRadius: 2,
+            overflow: 'hidden',
+          }}
+        >
           {canvasRefs.map((canvasRef, index) => (
             <canvas
               key={index}
               ref={canvasRef}
               width={canvasSize.width}
               height={canvasSize.height}
-              className="absolute top-0 left-0"
-              style={{zIndex: index}}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                zIndex: index,
+              }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             />
           ))}
-        </div>
-        <div className="w-24 flex flex-col justify-center space-y-4 p-2">
+        </Box>
+        <Box sx={{ width: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
             <Button
               key={colorOption.name}
-              variant={colorOption.value === color ? 'default' : 'outline'}
+              variant={colorOption.value === color ? 'contained' : 'outlined'}
               onClick={() => setColor(colorOption.value)}
-              className="w-20 h-20 rounded-full"
-              style={{backgroundColor: colorOption.value === 'rainbow' ? 'white' : colorOption.value, border: colorOption.value === color ? '4px solid #8A2BE2' : 'none'}}
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                mb: 2,
+                backgroundColor: colorOption.value === 'rainbow' ? 'white' : colorOption.value,
+                border: colorOption.value === color ? '4px solid' : 'none',
+                borderColor: 'secondary.main',
+                '&:hover': {
+                  backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : colorOption.value,
+                },
+              }}
             >
               {colorOption.value === 'rainbow' && (
-                <div className="w-full h-full rounded-full bg-gradient-to-r from-pink-500 via-yellow-500 to-blue-500" />
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(to right, #FF69B4, #FFD700, #87CEEB)',
+                  }}
+                />
               )}
             </Button>
           ))}
-        </div>
-      </div>
-      <div className="w-full max-w-sm mx-auto p-4">
-        <h2 className="text-2xl font-bold text-purple-500 mb-2">Brush Size</h2>
-        <Slider
-          value={[brushSize]}
-          onValueChange={handleBrushSizeChange}
-          min={1}
-          max={50}
-          step={1}
-          className="w-full"
-        />
-        <div className="flex justify-between mt-2">
-          <span>Small</span>
-          <span>Big</span>
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+      <Card sx={{ maxWidth: 400, mx: 'auto', my: 2 }}>
+        <CardHeader title="Brush Size" />
+        <CardContent>
+          <Slider
+            value={brushSize}
+            onChange={handleBrushSizeChange}
+            min={1}
+            max={50}
+            step={1}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+            <Typography variant="caption">Small</Typography>
+            <Typography variant="caption">Big</Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 
