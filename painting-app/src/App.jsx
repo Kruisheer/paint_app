@@ -12,6 +12,7 @@ const colors = [
 
 const PaintingApp = () => {
   const [color, setColor] = useState('black');
+  const [brushSize, setBrushSize] = useState(5);
   const [drawing, setDrawing] = useState(false);
   const canvasRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -20,25 +21,23 @@ const PaintingApp = () => {
     const updateCanvasSize = () => {
       setCanvasSize({
         width: window.innerWidth,
-        height: window.innerHeight - 100, // Subtracting 100px for the color buttons
+        height: window.innerHeight - 150, // Subtracting 150px for the color buttons and brush size slider
       });
     };
-
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
-
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.lineWidth = 5;
+    ctx.lineWidth = brushSize;
     
     // Clear canvas and redraw when size changes
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
-  }, [canvasSize]);
+  }, [canvasSize, brushSize]);
 
   const handleMouseDown = (e) => {
     setDrawing(true);
@@ -54,11 +53,18 @@ const PaintingApp = () => {
     const ctx = canvas.getContext('2d');
     ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
     ctx.strokeStyle = color;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.stroke();
   };
 
   const handleMouseUp = () => {
     setDrawing(false);
+  };
+
+  const handleBrushSizeChange = (value) => {
+    setBrushSize(value[0]);
   };
 
   return (
@@ -73,17 +79,35 @@ const PaintingApp = () => {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       />
-      <div className="flex justify-center space-x-2 p-4">
-        {colors.map((colorOption) => (
-          <Button
-            key={colorOption.name}
-            variant={colorOption.value === color ? 'default' : 'outline'}
-            onClick={() => setColor(colorOption.value)}
-            className="w-20"
-          >
-            {colorOption.name}
-          </Button>
-        ))}
+      <div className="flex flex-col items-center space-y-4 p-4">
+        <div className="flex justify-center space-x-2">
+          {colors.map((colorOption) => (
+            <Button
+              key={colorOption.name}
+              variant={colorOption.value === color ? 'default' : 'outline'}
+              onClick={() => setColor(colorOption.value)}
+              className="w-20"
+            >
+              {colorOption.name}
+            </Button>
+          ))}
+        </div>
+        <div className="w-full max-w-xs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Brush Size: {brushSize}px</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Slider
+                value={[brushSize]}
+                onValueChange={handleBrushSizeChange}
+                min={1}
+                max={50}
+                step={1}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
