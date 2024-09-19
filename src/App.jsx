@@ -12,10 +12,8 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { Star, Sun, Moon } from 'lucide-react';
-import Draggable from 'react-draggable';
-import { ResizableBox } from 'react-resizable';
-import 'react-resizable/css/styles.css';
+import { Star, Moon } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 // Import SVGs as raw strings
 import fishSVG from './assets/images/fish.svg?raw';
@@ -65,12 +63,14 @@ const PaintingApp = () => {
   const [color, setColor] = useState('#FF69B4');
   const [brushSize, setBrushSize] = useState(10);
   const [drawing, setDrawing] = useState(false);
-  const [activeLayer, setActiveLayer] = useState(1);
+  const [activeLayer, setActiveLayer] = useState(1); // 1: Back, 2: Images, 3: Front
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 }); // Initial position
-  const [imageSize, setImageSize] = useState({ width: 200, height: 200 }); // Initial size
+  const [imageScale, setImageScale] = useState(1); // Scale factor starting at 1
+  const [positionSet, setPositionSet] = useState(false); // To track if position is set
   const [tabValue, setTabValue] = useState(0); // For Tabs
+  const [stamps, setStamps] = useState([]); // Array to hold all stamps
+  const [maxScale, setMaxScale] = useState(3); // Default maximum scale
 
   const colorIndexRef = useRef(0);
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
@@ -80,7 +80,7 @@ const PaintingApp = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width, height: height - 350 }); // Adjusted for additional controls
+        setCanvasSize({ width, height: height - 400 }); // Adjusted for additional controls
       }
     };
 
@@ -90,28 +90,48 @@ const PaintingApp = () => {
   }, []);
 
   useEffect(() => {
-    canvasRefs.forEach((canvasRef, index) => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        if (index === 1) { // Middle layer
-          if (selectedImage) {
-            const img = new Image();
-            img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous image
-              ctx.drawImage(img, imagePosition.x, imagePosition.y, imageSize.width, imageSize.height);
-            };
-            img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
-          } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas if no image
-          }
-        }
+    if (selectedImage) {
+      // Parse the SVG to get intrinsic dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(selectedImage.svg, "image/svg+xml");
+      const svgElement = svgDoc.querySelector('svg');
+
+      const intrinsicWidth = parseFloat(svgElement.getAttribute('width')) || 100; // Default to 100 if not specified
+      const intrinsicHeight = parseFloat(svgElement.getAttribute('height')) || 100;
+
+      // Calculate maximum scale based on canvas size
+      const maxScaleX = canvasSize.width / intrinsicWidth;
+      const maxScaleY = canvasSize.height / intrinsicHeight;
+      const calculatedMaxScale = Math.min(maxScaleX, maxScaleY, 3); // Limit to a maximum of 3x for practicality
+
+      setMaxScale(calculatedMaxScale);
+      if (imageScale > calculatedMaxScale) {
+        setImageScale(calculatedMaxScale);
       }
-    });
-  }, [canvasSize, selectedImage, imagePosition, imageSize]);
+    }
+  }, [selectedImage, canvasSize]);
+
+  useEffect(() => {
+    const canvas = canvasRefs[1].current; // Middle layer for images
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous stamps
+
+      stamps.forEach((stamp) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(
+            img,
+            stamp.x,
+            stamp.y,
+            img.width * stamp.scale,
+            img.height * stamp.scale
+          );
+        };
+        img.src = `data:image/svg+xml;base64,${btoa(stamp.svg)}`;
+      });
+    }
+  }, [stamps, canvasSize]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -177,7 +197,7 @@ const PaintingApp = () => {
     const tempCtx = tempCanvas.getContext('2d');
 
     // Draw each layer onto the temporary canvas
-    canvasRefs.forEach((canvasRef) => {
+    canvasRefs.forEach((canvasRef, index) => {
       const canvas = canvasRef.current;
       if (canvas) {
         tempCtx.drawImage(canvas, 0, 0);
@@ -194,9 +214,7 @@ const PaintingApp = () => {
 
   const handleSaveProject = () => {
     const state = {
-      selectedImage,
-      imagePosition,
-      imageSize,
+      stamps,
       drawings: canvasRefs.map((canvasRef) => canvasRef.current.toDataURL()),
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
@@ -208,49 +226,88 @@ const PaintingApp = () => {
 
   const handleLoadImage = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && file.type === 'image/png') {
       const img = new Image();
       const reader = new FileReader();
       reader.onload = (event) => {
         img.onload = () => {
           // Clear all canvases
-          canvasRefs.forEach((canvasRef, index) => {
+          canvasRefs.forEach((canvasRef) => {
             const ctx = canvasRef.current.getContext('2d');
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
           });
-          // Draw the loaded image onto the topmost canvas
-          const topCanvas = canvasRefs[2].current; // Front layer
-          const ctx = topCanvas.getContext('2d');
+          // Draw the loaded image onto the frontmost canvas
+          const frontCanvas = canvasRefs[2].current; // Front layer
+          const ctx = frontCanvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvasSize.width, canvasSize.height);
         };
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
+    } else {
+      alert('Please upload a valid PNG image.');
     }
   };
 
   const handleLoadProject = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && file.type === 'application/json') {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const state = JSON.parse(event.target.result);
-        // Restore selectedImage, position, and size
-        setSelectedImage(state.selectedImage);
-        setImagePosition(state.imagePosition);
-        setImageSize(state.imageSize);
-        // Restore drawings
-        state.drawings.forEach((dataURL, index) => {
-          const img = new Image();
-          img.onload = () => {
-            const ctx = canvasRefs[index].current.getContext('2d');
-            ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.drawImage(img, 0, 0);
-          };
-          img.src = dataURL;
-        });
+        try {
+          const state = JSON.parse(event.target.result);
+          if (state.stamps && state.drawings) {
+            setStamps(state.stamps);
+
+            // Restore drawings on respective canvases
+            state.drawings.forEach((dataURL, index) => {
+              const img = new Image();
+              img.onload = () => {
+                const ctx = canvasRefs[index].current.getContext('2d');
+                ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+                ctx.drawImage(img, 0, 0);
+              };
+              img.src = dataURL;
+            });
+          } else {
+            alert('Invalid project file.');
+          }
+        } catch (error) {
+          alert('Error loading project. Please ensure the file is a valid JSON.');
+        }
       };
       reader.readAsText(file);
+    } else {
+      alert('Please upload a valid JSON project file.');
+    }
+  };
+
+  const handleCanvasClick = (e) => {
+    if (selectedImage && !positionSet) {
+      const canvas = canvasRefs[activeLayer - 1].current;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Create a temporary DOM element to parse the SVG and get its intrinsic dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(selectedImage.svg, "image/svg+xml");
+      const svgElement = svgDoc.querySelector('svg');
+
+      const intrinsicWidth = parseFloat(svgElement.getAttribute('width')) || 100; // Default to 100 if not specified
+      const intrinsicHeight = parseFloat(svgElement.getAttribute('height')) || 100;
+
+      // Calculate the top-left position to center the SVG at the click point
+      const x = clickX - (intrinsicWidth * imageScale) / 2;
+      const y = clickY - (intrinsicHeight * imageScale) / 2;
+
+      // Add the new stamp to the stamps array
+      setStamps([...stamps, { svg: selectedImage.svg, x, y, scale: imageScale }]);
+
+      // Reset selection
+      setSelectedImage(null);
+      setImageScale(1);
+      setPositionSet(true);
     }
   };
 
@@ -275,133 +332,210 @@ const PaintingApp = () => {
         {images.map((img) => (
           <Button
             key={img.name}
-            variant={selectedImage && selectedImage.name === img.name ? 'contained' : 'outlined'}
+            variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
             onClick={() => {
               setSelectedImage(img);
-              setImagePosition({ x: 50, y: 50 }); // Reset position
-              setImageSize({ width: 200, height: 200 }); // Reset size
+              setImageScale(1); // Reset scale
+              setPositionSet(false); // Allow setting position for the new stamp
             }}
-            sx={{ textTransform: 'none' }}
+            sx={{
+              textTransform: 'none',
+              width: 80,
+              height: 80,
+              padding: 1,
+            }}
+            aria-label={`Select ${img.name} stamp`}
           >
-            {img.name}
+            <Box
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(img.svg) }}
+              sx={{
+                width: '100%',
+                height: '100%',
+                transform: 'scale(0.8)',
+                transformOrigin: 'center',
+              }}
+            />
           </Button>
         ))}
       </Box>
       
-      {/* Clear Image Button */}
-      {selectedImage && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, p: 1 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => setSelectedImage(null)}
-            sx={{ textTransform: 'none' }}
-          >
-            Clear Image
-          </Button>
-        </Box>
-      )}
-
-      {/* Draggable and Resizable Controls */}
-      {selectedImage && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-          {/* Draggable Controls */}
-          <Draggable
-            position={imagePosition}
-            onStop={(e, data) => {
-              setImagePosition({ x: data.x, y: data.y });
-            }}
-          >
-            <Box sx={{ border: '1px dashed grey', padding: 1, cursor: 'move' }}>
-              Drag Image
-            </Box>
-          </Draggable>
-
-          {/* Resizable Controls */}
-          <ResizableBox
-            width={imageSize.width}
-            height={imageSize.height}
-            minConstraints={[50, 50]}
-            maxConstraints={[canvasSize.width, canvasSize.height]}
-            onResizeStop={(event, { size }) => {
-              setImageSize({ width: size.width, height: size.height });
-            }}
-          >
-            <Box sx={{ border: '1px dashed grey', padding: 1, width: '100%', height: '100%', boxSizing: 'border-box' }}>
-              Resize Image
-            </Box>
-          </ResizableBox>
-        </Box>
-      )}
-
-      {/* Tabs for Save/Load Controls */}
-      <Box sx={{ width: '100%' }}>
-        <Tabs value={tabValue} onChange={handleTabChange} centered>
-          <Tab label="Save/Load" />
-        </Tabs>
-        <TabPanel value={tabValue} index={0}>
-          {/* Save and Load Buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-            {/* Save as Image */}
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSaveAsImage}
-              sx={{ textTransform: 'none' }}
+      {/* Scale Slider with Preview and Save/Load Buttons */}
+      {selectedImage && !positionSet && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, flexDirection: 'column' }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Adjust Scale:
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Slider
+              value={imageScale}
+              onChange={(e, newValue) => setImageScale(newValue)}
+              min={0.5}
+              max={maxScale}
+              step={0.1}
+              sx={{ width: 200 }}
+            />
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                ml: 2,
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                overflow: 'hidden',
+              }}
             >
-              Save as Image
-            </Button>
-
-            {/* Save Project (JSON) */}
-            <Button
-              variant="contained"
-              color="info"
-              onClick={handleSaveProject}
-              sx={{ textTransform: 'none' }}
-            >
-              Save Project
-            </Button>
-
-            {/* Load Image */}
-            <Button
-              variant="contained"
-              color="primary"
-              component="label"
-              sx={{ textTransform: 'none' }}
-            >
-              Load Image
-              <input
-                type="file"
-                accept="image/png"
-                hidden
-                onChange={handleLoadImage}
+              {/* Preview of the SVG with current scale */}
+              <Box
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedImage.svg) }}
+                sx={{
+                  width: `${60 * imageScale}px`,
+                  height: `${60 * imageScale}px`,
+                  transform: `scale(${imageScale})`,
+                  transformOrigin: 'center',
+                }}
               />
-            </Button>
-
-            {/* Load Project */}
-            <Button
-              variant="contained"
-              color="secondary"
-              component="label"
-              sx={{ textTransform: 'none' }}
-            >
-              Load Project
-              <input
-                type="file"
-                accept="application/json"
-                hidden
-                onChange={handleLoadProject}
-              />
-            </Button>
+            </Box>
           </Box>
-        </TabPanel>
-      </Box>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Click on the canvas to place the stamp.
+          </Typography>
+          
+          {/* Tabs for Save/Load Controls placed under the slider */}
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <Tabs value={tabValue} onChange={handleTabChange} centered>
+              <Tab label="Save/Load" />
+            </Tabs>
+            <TabPanel value={tabValue} index={0}>
+              {/* Save and Load Buttons */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
+                {/* Save as Image */}
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleSaveAsImage}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Save as Image
+                </Button>
+    
+                {/* Save Project (JSON) */}
+                <Button
+                  variant="contained"
+                  color="info"
+                  onClick={handleSaveProject}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Save Project
+                </Button>
+    
+                {/* Load Image */}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  component="label"
+                  sx={{ textTransform: 'none' }}
+                >
+                  Load Image
+                  <input
+                    type="file"
+                    accept="image/png"
+                    hidden
+                    onChange={handleLoadImage}
+                  />
+                </Button>
+    
+                {/* Load Project */}
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  component="label"
+                  sx={{ textTransform: 'none' }}
+                >
+                  Load Project
+                  <input
+                    type="file"
+                    accept="application/json"
+                    hidden
+                    onChange={handleLoadProject}
+                  />
+                </Button>
+              </Box>
+            </TabPanel>
+          </Box>
+        </Box>
+      )}
+      
+      {/* Tabs for Save/Load Controls when no scale adjustment is needed */}
+      {!selectedImage && (
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <Tabs value={tabValue} onChange={handleTabChange} centered>
+            <Tab label="Save/Load" />
+          </Tabs>
+          <TabPanel value={tabValue} index={0}>
+            {/* Save and Load Buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
+              {/* Save as Image */}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleSaveAsImage}
+                sx={{ textTransform: 'none' }}
+              >
+                Save as Image
+              </Button>
+  
+              {/* Save Project (JSON) */}
+              <Button
+                variant="contained"
+                color="info"
+                onClick={handleSaveProject}
+                sx={{ textTransform: 'none' }}
+              >
+                Save Project
+              </Button>
+  
+              {/* Load Image */}
+              <Button
+                variant="contained"
+                color="primary"
+                component="label"
+                sx={{ textTransform: 'none' }}
+              >
+                Load Image
+                <input
+                  type="file"
+                  accept="image/png"
+                  hidden
+                  onChange={handleLoadImage}
+                />
+              </Button>
+  
+              {/* Load Project */}
+              <Button
+                variant="contained"
+                color="secondary"
+                component="label"
+                sx={{ textTransform: 'none' }}
+              >
+                Load Project
+                <input
+                  type="file"
+                  accept="application/json"
+                  hidden
+                  onChange={handleLoadProject}
+                />
+              </Button>
+            </Box>
+          </TabPanel>
+        </Box>
+      )}
 
       <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
+        {/* Layer Controls */}
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {[
             { layer: 1, icon: Star, label: 'Back' },
-            { layer: 2, icon: Sun, label: 'Middle' },
+            // Removed the middle layer button
             { layer: 3, icon: Moon, label: 'Front' }
           ].map(({ layer, icon: Icon, label }) => (
             <Button
@@ -418,7 +552,7 @@ const PaintingApp = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-            >
+              aria-label={`Select ${label} layer`}
             >
               <Icon size={24} />
               <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
@@ -426,6 +560,7 @@ const PaintingApp = () => {
           ))}
         </Box>
         
+        {/* Canvas Area */}
         <Box
           sx={{
             flex: 1,
@@ -458,10 +593,12 @@ const PaintingApp = () => {
               onTouchStart={startDrawing}
               onTouchMove={draw}
               onTouchEnd={stopDrawing}
+              onClick={handleCanvasClick} // Handle stamp placement
             />
           ))}
         </Box>
         
+        {/* Color Palette */}
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
             <Button
@@ -480,6 +617,7 @@ const PaintingApp = () => {
                   backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : colorOption.value,
                 },
               }}
+              aria-label={`Select ${colorOption.name} color`}
             >
               {colorOption.value === 'rainbow' && (
                 <Box
@@ -496,6 +634,7 @@ const PaintingApp = () => {
         </Box>
       </Box>
       
+      {/* Brush Size Slider */}
       <Card sx={{ m: 1 }}>
         <CardHeader title="Brush Size" sx={{ py: 1 }} />
         <CardContent>
