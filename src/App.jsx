@@ -1,4 +1,5 @@
 // src/PaintingApp.jsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
@@ -66,8 +67,8 @@ const PaintingApp = () => {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 }); // Initial position
-  const [imageSize, setImageSize] = useState({ width: 200, height: 200 }); // Initial size
-  const [positionSet, setPositionSet] = useState(false); // To track if position and scale are set
+  const [imageScale, setImageScale] = useState(1); // Scale factor starting at 1
+  const [positionSet, setPositionSet] = useState(false); // To track if position is set
   const [tabValue, setTabValue] = useState(0); // For Tabs
 
   const colorIndexRef = useRef(0);
@@ -78,7 +79,7 @@ const PaintingApp = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width, height: height - 350 }); // Adjusted for additional controls
+        setCanvasSize({ width, height: height - 400 }); // Adjusted for additional controls
       }
     };
 
@@ -100,7 +101,13 @@ const PaintingApp = () => {
             const img = new Image();
             img.onload = () => {
               ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous image
-              ctx.drawImage(img, imagePosition.x, imagePosition.y, imageSize.width, imageSize.height);
+              ctx.drawImage(
+                img,
+                imagePosition.x,
+                imagePosition.y,
+                img.width * imageScale,
+                img.height * imageScale
+              );
             };
             img.src = `data:image/svg+xml;base64,${btoa(selectedImage.svg)}`;
           } else {
@@ -109,7 +116,7 @@ const PaintingApp = () => {
         }
       }
     });
-  }, [canvasSize, selectedImage, imagePosition, imageSize, positionSet]);
+  }, [canvasSize, selectedImage, imagePosition, imageScale, positionSet]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -194,7 +201,7 @@ const PaintingApp = () => {
     const state = {
       selectedImage,
       imagePosition,
-      imageSize,
+      imageScale,
       drawings: canvasRefs.map((canvasRef) => canvasRef.current.toDataURL()),
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
@@ -233,11 +240,11 @@ const PaintingApp = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const state = JSON.parse(event.target.result);
-        // Restore selectedImage, position, and size
+        // Restore selectedImage, position, and scale
         setSelectedImage(state.selectedImage);
         setImagePosition(state.imagePosition);
-        setImageSize(state.imageSize);
-        setPositionSet(true); // Since position and size are restored
+        setImageScale(state.imageScale);
+        setPositionSet(true); // Since position and scale are restored
         // Restore drawings
         state.drawings.forEach((dataURL, index) => {
           const img = new Image();
@@ -250,6 +257,17 @@ const PaintingApp = () => {
         });
       };
       reader.readAsText(file);
+    }
+  };
+
+  const handleCanvasClick = (e) => {
+    if (selectedImage && !positionSet) {
+      const canvas = canvasRefs[activeLayer - 1].current;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setImagePosition({ x, y });
+      setPositionSet(true);
     }
   };
 
@@ -278,8 +296,8 @@ const PaintingApp = () => {
             onClick={() => {
               setSelectedImage(img);
               setImagePosition({ x: 50, y: 50 }); // Reset position
-              setImageSize({ width: 200, height: 200 }); // Reset size
-              setPositionSet(false); // Allow setting position and scale
+              setImageScale(1); // Reset scale
+              setPositionSet(false); // Allow setting position
             }}
             sx={{ textTransform: 'none' }}
           >
@@ -302,55 +320,29 @@ const PaintingApp = () => {
         </Box>
       )}
 
-      {/* Position and Scale Inputs */}
+      {/* Prompt to Click on Canvas to Set Position */}
       {selectedImage && !positionSet && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 1, flexWrap: 'wrap' }}>
-          <Box>
-            <Typography variant="body2">X Position:</Typography>
-            <input
-              type="number"
-              value={imagePosition.x}
-              onChange={(e) => setImagePosition({ ...imagePosition, x: Number(e.target.value) })}
-              style={{ width: '80px' }}
-            />
-          </Box>
-          <Box>
-            <Typography variant="body2">Y Position:</Typography>
-            <input
-              type="number"
-              value={imagePosition.y}
-              onChange={(e) => setImagePosition({ ...imagePosition, y: Number(e.target.value) })}
-              style={{ width: '80px' }}
-            />
-          </Box>
-          <Box>
-            <Typography variant="body2">Width:</Typography>
-            <input
-              type="number"
-              value={imageSize.width}
-              onChange={(e) => setImageSize({ ...imageSize, width: Number(e.target.value) })}
-              style={{ width: '80px' }}
-            />
-          </Box>
-          <Box>
-            <Typography variant="body2">Height:</Typography>
-            <input
-              type="number"
-              value={imageSize.height}
-              onChange={(e) => setImageSize({ ...imageSize, height: Number(e.target.value) })}
-              style={{ width: '80px' }}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setPositionSet(true)}
-              sx={{ textTransform: 'none', mt: 1 }}
-            >
-              Set Image
-            </Button>
-          </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 1 }}>
+          <Typography variant="body2" color="textSecondary">
+            Click on the canvas to set the image position.
+          </Typography>
+        </Box>
+      )}
+
+      {/* Scale Slider */}
+      {selectedImage && positionSet && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1 }}>
+          <Typography variant="body2" sx={{ mr: 2 }}>
+            Scale:
+          </Typography>
+          <Slider
+            value={imageScale}
+            onChange={(e, newValue) => setImageScale(newValue)}
+            min={0.5}
+            max={3}
+            step={0.1}
+            sx={{ width: 200 }}
+          />
         </Box>
       )}
 
@@ -418,6 +410,7 @@ const PaintingApp = () => {
       </Box>
 
       <Box sx={{ display: 'flex', flex: 1, position: 'relative' }}>
+        {/* Layer Controls */}
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {[
             { layer: 1, icon: Star, label: 'Back' },
@@ -445,6 +438,7 @@ const PaintingApp = () => {
           ))}
         </Box>
         
+        {/* Canvas Area */}
         <Box
           sx={{
             flex: 1,
@@ -477,10 +471,12 @@ const PaintingApp = () => {
               onTouchStart={startDrawing}
               onTouchMove={draw}
               onTouchEnd={stopDrawing}
+              onClick={handleCanvasClick} // Handle position setting
             />
           ))}
         </Box>
         
+        {/* Color Palette */}
         <Box sx={{ width: 80, display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 1 }}>
           {colors.map((colorOption) => (
             <Button
@@ -515,6 +511,7 @@ const PaintingApp = () => {
         </Box>
       </Box>
       
+      {/* Brush Size Slider */}
       <Card sx={{ m: 1 }}>
         <CardHeader title="Brush Size" sx={{ py: 1 }} />
         <CardContent>
