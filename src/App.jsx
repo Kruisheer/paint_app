@@ -85,6 +85,23 @@ const PaintingApp = () => {
       }
     });
   }, [canvasSize, brushSize, selectedImage]);
+  const mergeLayers = () => {
+  const targetCanvas = canvasRefs[activeLayer - 1].current;
+  const targetCtx = targetCanvas.getContext('2d');
+
+  for (let i = 0; i < activeLayer - 1; i++) {
+    const sourceCanvas = canvasRefs[i].current;
+    targetCtx.globalAlpha = 1 - (activeLayer - 1 - i) * 0.2;
+    targetCtx.drawImage(sourceCanvas, 0, 0);
+  }
+  targetCtx.globalAlpha = 1;
+};
+
+// Call mergeLayers in the useEffect hook when activeLayer changes
+useEffect(() => {
+  mergeLayers();
+}, [activeLayer]);
+  
 
   const getNextColor = () => {
     if (color === 'rainbow') {
