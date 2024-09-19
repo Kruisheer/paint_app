@@ -328,7 +328,15 @@ const PaintingApp = () => {
       </Typography>
       
       {/* Image Selection Panel */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, p: 1, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 2, // Increased gap for better spacing
+          p: 2,   // Increased padding for better spacing
+          flexWrap: 'wrap',
+        }}
+      >
         {images.map((img) => (
           <Button
             key={img.name}
@@ -342,18 +350,22 @@ const PaintingApp = () => {
               textTransform: 'none',
               width: 80,
               height: 80,
-              padding: 1,
+              padding: 0, // Remove padding to utilize full button size
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              borderRadius: 2,
             }}
             aria-label={`Select ${img.name} stamp`}
           >
-            <Box
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(img.svg) }}
-              sx={{
-                maxWidth: '60%',
-                maxHeight: '60%',
+            {/* Using <img> tag for better control over SVG sizing */}
+            <img
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(img.svg)}`}
+              alt={img.name}
+              style={{
+                width: '60%', // 60% of the button size
+                height: '60%', // 60% of the button size
+                objectFit: 'contain',
               }}
             />
           </Button>
