@@ -65,7 +65,6 @@ const PaintingApp = () => {
   const [brushSize, setBrushSize] = useState(10);
   const [drawing, setDrawing] = useState(false);
   const [activeLayer, setActiveLayer] = useState(1); // 1: Back, 2: Images, 3: Front
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [selectedImage, setSelectedImage] = useState(null);
   const [tabValue, setTabValue] = useState(0); // For Tabs
   const [stamps, setStamps] = useState([]); // Array to hold all stamps
@@ -76,17 +75,12 @@ const PaintingApp = () => {
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
   const containerRef = useRef(null);
 
-  useEffect(() => {
-    const updateCanvasSize = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width, height: height - 400 }); // Adjusted for additional controls
-      }
-    };
+  // Set a fixed canvas size
+  const fixedCanvasSize = { width: 800, height: 600 };
 
-    updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
+  useEffect(() => {
+    // Set the canvas size to fixed dimensions
+    setCanvasSize(fixedCanvasSize);
   }, []);
 
   useEffect(() => {
@@ -100,13 +94,13 @@ const PaintingApp = () => {
       const intrinsicHeight = parseFloat(svgElement.getAttribute('height')) || 100;
 
       // Calculate maximum scale based on canvas size
-      const maxScaleX = canvasSize.width / intrinsicWidth;
-      const maxScaleY = canvasSize.height / intrinsicHeight;
+      const maxScaleX = fixedCanvasSize.width / intrinsicWidth;
+      const maxScaleY = fixedCanvasSize.height / intrinsicHeight;
       const calculatedMaxScale = Math.min(maxScaleX, maxScaleY, 3); // Limit to a maximum of 3x for practicality
 
       setMaxScale(calculatedMaxScale);
     }
-  }, [selectedImage, canvasSize]);
+  }, [selectedImage, fixedCanvasSize]);
 
   useEffect(() => {
     const canvas = canvasRefs[1].current; // Middle layer for images
@@ -128,7 +122,7 @@ const PaintingApp = () => {
         img.src = `data:image/svg+xml;base64,${btoa(stamp.svg)}`;
       });
     }
-  }, [stamps, canvasSize]);
+  }, [stamps, fixedCanvasSize]);
 
   const getNextColor = () => {
     if (color === 'rainbow') {
@@ -217,8 +211,8 @@ const PaintingApp = () => {
   const handleSaveAsImage = () => {
     // Create a temporary canvas to combine layers
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvasSize.width;
-    tempCanvas.height = canvasSize.height;
+    tempCanvas.width = fixedCanvasSize.width;
+    tempCanvas.height = fixedCanvasSize.height;
     const tempCtx = tempCanvas.getContext('2d');
 
     // Draw each layer onto the temporary canvas
@@ -259,12 +253,12 @@ const PaintingApp = () => {
           // Clear all canvases
           canvasRefs.forEach((canvasRef) => {
             const ctx = canvasRef.current.getContext('2d');
-            ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+            ctx.clearRect(0, 0, fixedCanvasSize.width, fixedCanvasSize.height);
           });
           // Draw the loaded image onto the frontmost canvas
           const frontCanvas = canvasRefs[2].current; // Front layer
           const ctx = frontCanvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, canvasSize.width, canvasSize.height);
+          ctx.drawImage(img, 0, 0, fixedCanvasSize.width, fixedCanvasSize.height);
         };
         img.src = event.target.result;
       };
@@ -289,7 +283,7 @@ const PaintingApp = () => {
               const img = new Image();
               img.onload = () => {
                 const ctx = canvasRefs[index].current.getContext('2d');
-                ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+                ctx.clearRect(0, 0, fixedCanvasSize.width, fixedCanvasSize.height);
                 ctx.drawImage(img, 0, 0);
               };
               img.src = dataURL;
@@ -360,9 +354,11 @@ const PaintingApp = () => {
         width: '100vw',
         overflowY: 'auto', // Allow vertical scrolling
         background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
+        alignItems: 'center', // Center the content horizontally
+        padding: 2, // Add some padding around the content
       }}
     >
-      <Typography variant="h4" align="center" color="primary" sx={{ py: 1 }}>
+      <Typography variant="h4" align="center" color="primary" sx={{ py: 2 }}>
         Magic Painting!
       </Typography>
       
@@ -461,6 +457,9 @@ const PaintingApp = () => {
           flexDirection: { xs: 'column', md: 'row' }, // Stack on small screens
           flex: 1,
           position: 'relative',
+          width: fixedCanvasSize.width,
+          height: fixedCanvasSize.height + 100, // Additional space for controls if needed
+          maxWidth: '100%', // Ensure it doesn't exceed the viewport
         }}
       >
         {/* Layer Controls */}
@@ -510,16 +509,17 @@ const PaintingApp = () => {
             borderRadius: 2,
             overflow: 'hidden',
             touchAction: 'none',
-            height: { xs: 300, md: 'auto' }, // Set a fixed height on small screens
+            height: fixedCanvasSize.height,
             cursor: getCursorStyle(),
+            backgroundColor: '#FFFFFF', // Set a white background
           }}
         >
           {canvasRefs.map((canvasRef, index) => (
             <canvas
               key={index}
               ref={canvasRef}
-              width={canvasSize.width}
-              height={canvasSize.height}
+              width={fixedCanvasSize.width}
+              height={fixedCanvasSize.height}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -602,7 +602,8 @@ const PaintingApp = () => {
       <Card
         sx={{
           m: 1,
-          order: { xs: 3, md: 2 }, // Position before Save/Load on small screens
+          width: fixedCanvasSize.width,
+          maxWidth: '100%', // Ensure it doesn't exceed the viewport
         }}
       >
         <CardHeader title="Brush Size" sx={{ py: 1 }} />
@@ -624,10 +625,10 @@ const PaintingApp = () => {
       {/* Save/Load Buttons Positioned Below Brush Size Slider */}
       <Box
         sx={{
-          width: '100%',
+          width: fixedCanvasSize.width,
+          maxWidth: '100%', // Ensure it doesn't exceed the viewport
           mb: 2,
           px: 2,
-          order: { xs: 4, md: 3 }, // Ensure it's below the slider on small screens
         }}
       >
         <Tabs value={tabValue} onChange={handleTabChange} centered>
