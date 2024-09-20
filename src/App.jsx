@@ -80,7 +80,7 @@ const PaintingApp = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width, height: height - 400 }); // Adjusted for additional controls
+        setCanvasSize({ width, height: height - 200 }); // Adjusted for additional controls
       }
     };
 
@@ -362,97 +362,120 @@ const PaintingApp = () => {
         background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
       }}
     >
-      <Typography variant="h4" align="center" color="primary" sx={{ py: 1 }}>
-        Magic Painting!
-      </Typography>
-      
-      {/* Image Selection Panel */}
+      {/* Top Bar: "Magic Painting" Text, SVG Buttons, Brush Size Slider */}
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'center',
-          gap: 2, // Increased gap for better spacing
-          p: 2,   // Increased padding for better spacing
+          flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on extra-small screens
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          gap: 2,
           flexWrap: 'wrap',
         }}
       >
-        {images.map((img) => (
-          <Button
-            key={img.name}
-            variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
-            onClick={() => {
-              setSelectedImage(img);
-            }}
-            sx={{
-              textTransform: 'none',
-              width: 80,
-              height: 80,
-              padding: 0, // Remove padding to utilize full button size
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 2,
-            }}
-            aria-label={`Select ${img.name} stamp`}
-          >
-            {/* Using <img> tag for better control over SVG sizing */}
-            <img
-              src={`data:image/svg+xml;utf8,${encodeURIComponent(img.svg)}`}
-              alt={img.name}
-              style={{
-                width: '60%', // 60% of the button size
-                height: '60%', // 60% of the button size
-                objectFit: 'contain',
+        {/* "Magic Painting" Text */}
+        <Typography variant="h4" color="primary" sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
+          Magic Painting!
+        </Typography>
+        
+        {/* Image Selection Panel */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+            flex: { xs: '1 1 auto', sm: '0 0 auto' },
+          }}
+        >
+          {images.map((img) => (
+            <Button
+              key={img.name}
+              variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
+              onClick={() => {
+                setSelectedImage(img);
               }}
-            />
-          </Button>
-        ))}
-      </Box>
-      
-      {/* Preview and Instructions */}
-      {selectedImage && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, flexDirection: 'column' }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Adjust Brush Size to Scale Stamp:
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Slider
-              value={brushSize}
-              onChange={handleBrushSizeChange}
-              min={1}
-              max={50}
-              step={1}
-              sx={{ width: 200 }}
-            />
-            <Box
               sx={{
-                width: 60,
-                height: 60,
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                overflow: 'hidden',
+                textTransform: 'none',
+                width: 80,
+                height: 80,
+                padding: 0, // Remove padding to utilize full button size
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                borderRadius: 2,
               }}
+              aria-label={`Select ${img.name} stamp`}
             >
-              {/* Preview of the SVG with current brush size */}
+              {/* Using <img> tag for better control over SVG sizing */}
               <img
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
-                alt="Stamp Preview"
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(img.svg)}`}
+                alt={img.name}
                 style={{
-                  width: `${getPreviewScale() * 60}px`, // Scale based on brush size
-                  height: `${getPreviewScale() * 60}px`,
+                  width: '60%', // 60% of the button size
+                  height: '60%', // 60% of the button size
                   objectFit: 'contain',
                 }}
               />
-            </Box>
-          </Box>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Click on the canvas to place the stamp.
-          </Typography>
+            </Button>
+          ))}
         </Box>
-      )}
+        
+        {/* Brush Size Slider */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            flex: { xs: '1 1 100%', sm: '0 0 auto' },
+          }}
+        >
+          {selectedImage && (
+            <>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Adjust Brush Size to Scale Stamp:
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Slider
+                  value={brushSize}
+                  onChange={handleBrushSizeChange}
+                  min={1}
+                  max={50}
+                  step={1}
+                  sx={{ width: 200 }}
+                />
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {/* Preview of the SVG with current brush size */}
+                  <img
+                    src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
+                    alt="Stamp Preview"
+                    style={{
+                      width: `${getPreviewScale() * 60}px`, // Scale based on brush size
+                      height: `${getPreviewScale() * 60}px`,
+                      objectFit: 'contain',
+                    }}
+                  />
+                </Box>
+              </Box>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Click on the canvas to place the stamp.
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Box>
       
       {/* Layer and Canvas Area */}
       <Box
@@ -598,36 +621,12 @@ const PaintingApp = () => {
         </Box>
       </Box>
       
-      {/* Brush Size Slider */}
-      <Card
-        sx={{
-          m: 1,
-          order: { xs: 3, md: 2 }, // Position before Save/Load on small screens
-        }}
-      >
-        <CardHeader title="Brush Size" sx={{ py: 1 }} />
-        <CardContent>
-          <Slider
-            value={brushSize}
-            onChange={handleBrushSizeChange}
-            min={1}
-            max={50}
-            step={1}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-            <Typography variant="caption">Small</Typography>
-            <Typography variant="caption">Big</Typography>
-          </Box>
-        </CardContent>
-      </Card>
-      
-      {/* Save/Load Buttons Positioned Below Brush Size Slider */}
+      {/* Save/Load Buttons Positioned Below Canvas and Controls */}
       <Box
         sx={{
           width: '100%',
           mb: 2,
           px: 2,
-          order: { xs: 4, md: 3 }, // Ensure it's below the slider on small screens
         }}
       >
         <Tabs value={tabValue} onChange={handleTabChange} centered>
