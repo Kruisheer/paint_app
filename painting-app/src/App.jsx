@@ -62,8 +62,7 @@ const images = [
 
 const PaintingApp = () => {
   const [color, setColor] = useState('#FF69B4');
-  const [brushSize, setBrushSize] = useState(10); // For brush stroke width
-  const [stampScale, setStampScale] = useState(1); // For stamp scaling
+  const [brushSize, setBrushSize] = useState(10);
   const [drawing, setDrawing] = useState(false);
   const [activeLayer, setActiveLayer] = useState(1); // 1: Back, 2: Images, 3: Front
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -210,10 +209,6 @@ const PaintingApp = () => {
     setBrushSize(newValue);
   };
 
-  const handleStampScaleChange = (event, newValue) => {
-    setStampScale(newValue);
-  };
-
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -319,8 +314,9 @@ const PaintingApp = () => {
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
-      // Use stampScale for scaling the stamp
-      const imageScale = stampScale;
+      // Compute imageScale based on brushSize
+      const minScale = 0.1; // Minimum scale factor
+      const imageScale = (brushSize / 50) * (maxScale - minScale) + minScale;
 
       // Parse the SVG to get intrinsic dimensions
       const parser = new DOMParser();
@@ -342,10 +338,11 @@ const PaintingApp = () => {
     }
   };
 
-  // Compute imageScale for the preview based on stampScale
+  // Compute imageScale for the preview based on brushSize
   const getPreviewScale = () => {
     if (!selectedImage) return 1;
-    return stampScale;
+    const minScale = 0.1; // Minimum scale factor
+    return (brushSize / 50) * (maxScale - minScale) + minScale;
   };
 
   // Determine cursor style based on Eraser mode
@@ -359,13 +356,13 @@ const PaintingApp = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh', // Ensures the container takes at least the full viewport height
+        minHeight: '100vh', // Changed from height to minHeight
         width: '100vw',
-        overflowY: 'auto', // Allows vertical scrolling if content overflows
-        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)', // Background gradient
+        overflowY: 'auto', // Allow vertical scrolling
+        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
       }}
     >
-      {/* Top Bar: "Magic Painting" Text, SVG Buttons, Stamp Scale Slider */}
+      {/* Top Bar: "Magic Painting" Text, SVG Buttons, Brush Size Slider */}
       <Box
         sx={{
           display: 'flex',
@@ -425,7 +422,7 @@ const PaintingApp = () => {
           ))}
         </Box>
         
-        {/* Stamp Scale Slider */}
+        {/* Brush Size Slider */}
         <Box
           sx={{
             display: 'flex',
@@ -437,15 +434,15 @@ const PaintingApp = () => {
           {selectedImage && (
             <>
               <Typography variant="body2" sx={{ mb: 1 }}>
-                Adjust Stamp Scale:
+                Adjust Brush Size to Scale Stamp:
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Slider
-                  value={stampScale}
-                  onChange={handleStampScaleChange}
-                  min={0.1}
-                  max={3}
-                  step={0.1}
+                  value={brushSize}
+                  onChange={handleBrushSizeChange}
+                  min={1}
+                  max={50}
+                  step={1}
                   sx={{ width: 200 }}
                 />
                 <Box
@@ -460,12 +457,12 @@ const PaintingApp = () => {
                     justifyContent: 'center',
                   }}
                 >
-                  {/* Preview of the SVG with current stamp scale */}
+                  {/* Preview of the SVG with current brush size */}
                   <img
                     src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
                     alt="Stamp Preview"
                     style={{
-                      width: `${getPreviewScale() * 60}px`, // Scale based on stampScale
+                      width: `${getPreviewScale() * 60}px`, // Scale based on brush size
                       height: `${getPreviewScale() * 60}px`,
                       objectFit: 'contain',
                     }}
@@ -566,7 +563,7 @@ const PaintingApp = () => {
           ))}
         </Box>
         
-        {/* Color Palette with Vertical Brush Size Slider */}
+        {/* Color Palette */}
         <Box
           sx={{
             width: { xs: '100%', md: 80 }, // Full width on small screens
@@ -621,30 +618,6 @@ const PaintingApp = () => {
               )}
             </Button>
           ))}
-
-          {/* Vertical Brush Size Slider */}
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              mt: 2,
-            }}
-          >
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Brush Size:
-            </Typography>
-            <Slider
-              orientation="vertical"
-              value={brushSize}
-              onChange={handleBrushSizeChange}
-              min={1}
-              max={50}
-              step={1}
-              sx={{ height: 150 }}
-              aria-labelledby="brush-size-slider"
-            />
-          </Box>
         </Box>
       </Box>
       
