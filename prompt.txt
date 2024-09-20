@@ -1,3 +1,7 @@
+Model : 3dAnimationDiffusion_v10.safetensors
+Preprocessor : 
+Controlnet : control_v11p_sd15_scribble 
+
 Positive:
 A realistic, happy, magical rainbow unicorn horse,  sparkles shimmering all around.  Cheerful and enchanting, soft pastel colors and a whimsical, fairy-tale feel.
 Negative:
