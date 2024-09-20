@@ -356,128 +356,15 @@ const PaintingApp = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh', // Changed from height to minHeight
+        minHeight: '100vh', // Ensures the container takes at least the full viewport height
         width: '100vw',
-        overflowY: 'auto', // Allow vertical scrolling
-        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)',
+        overflowY: 'auto', // Allows vertical scrolling if content overflows
+        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)', // Background gradient
       }}
     >
-      {/* Top Bar: "Magic Painting" Text, SVG Buttons, Brush Size Slider */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on extra-small screens
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          p: 2,
-          gap: 2,
-          flexWrap: 'wrap',
-        }}
-      >
-        {/* "Magic Painting" Text */}
-        <Typography variant="h4" color="primary" sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
-          Magic Painting!
-        </Typography>
-        
-        {/* Image Selection Panel */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
-            flex: { xs: '1 1 auto', sm: '0 0 auto' },
-          }}
-        >
-          {images.map((img) => (
-            <Button
-              key={img.name}
-              variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
-              onClick={() => {
-                setSelectedImage(img);
-              }}
-              sx={{
-                textTransform: 'none',
-                width: 80,
-                height: 80,
-                padding: 0, // Remove padding to utilize full button size
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 2,
-              }}
-              aria-label={`Select ${img.name} stamp`}
-            >
-              {/* Using <img> tag for better control over SVG sizing */}
-              <img
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(img.svg)}`}
-                alt={img.name}
-                style={{
-                  width: '60%', // 60% of the button size
-                  height: '60%', // 60% of the button size
-                  objectFit: 'contain',
-                }}
-              />
-            </Button>
-          ))}
-        </Box>
-        
-        {/* Brush Size Slider */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            flex: { xs: '1 1 100%', sm: '0 0 auto' },
-          }}
-        >
-          {selectedImage && (
-            <>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Adjust Brush Size to Scale Stamp:
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Slider
-                  value={brushSize}
-                  onChange={handleBrushSizeChange}
-                  min={1}
-                  max={50}
-                  step={1}
-                  sx={{ width: 200 }}
-                />
-                <Box
-                  sx={{
-                    width: 60,
-                    height: 60,
-                    border: '1px solid #ccc',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {/* Preview of the SVG with current brush size */}
-                  <img
-                    src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
-                    alt="Stamp Preview"
-                    style={{
-                      width: `${getPreviewScale() * 60}px`, // Scale based on brush size
-                      height: `${getPreviewScale() * 60}px`,
-                      objectFit: 'contain',
-                    }}
-                  />
-                </Box>
-              </Box>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Click on the canvas to place the stamp.
-              </Typography>
-            </>
-          )}
-        </Box>
-      </Box>
+      {/* Top Bar: "Magic Painting" Text, SVG Buttons, (Removed Horizontal Brush Slider) */}
       
-      {/* Layer and Canvas Area */}
+      {/* Layer and Canvas Area with Vertical Brush Slider */}
       <Box
         sx={{
           display: 'flex',
@@ -486,16 +373,19 @@ const PaintingApp = () => {
           position: 'relative',
         }}
       >
-        {/* Layer Controls */}
+        {/* Layer Controls and Vertical Brush Slider */}
         <Box
           sx={{
             width: { xs: '100%', md: 80 }, // Full width on small screens
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
             p: 1,
+            gap: 2, // Spacing between elements
           }}
         >
+          {/* Layer Buttons */}
           {[
             { layer: 1, icon: Star, label: 'Back' },
             // Removed the middle layer button
@@ -509,7 +399,6 @@ const PaintingApp = () => {
                 width: 60,
                 height: 60,
                 borderRadius: 2,
-                mb: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -521,6 +410,30 @@ const PaintingApp = () => {
               <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
             </Button>
           ))}
+
+          {/* Vertical Brush Size Slider */}
+          <Box
+            sx={{
+              height: 200, // Adjust height as needed
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Brush Size
+            </Typography>
+            <Slider
+              orientation="vertical"
+              value={brushSize}
+              onChange={handleBrushSizeChange}
+              min={1}
+              max={50}
+              step={1}
+              sx={{ height: 150 }} // Adjust height as needed
+            />
+            <Typography variant="caption">{brushSize}</Typography>
+          </Box>
         </Box>
         
         {/* Canvas Area */}
@@ -571,6 +484,7 @@ const PaintingApp = () => {
             flexDirection: 'column',
             justifyContent: 'center',
             p: 1,
+            gap: 1, // Spacing between color buttons
           }}
         >
           {colors.map((colorOption) => (
@@ -582,7 +496,6 @@ const PaintingApp = () => {
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
-                mb: 1,
                 backgroundColor: colorOption.value === 'rainbow' ? 'white' : (colorOption.value === 'eraser' ? 'transparent' : colorOption.value),
                 border: (colorOption.value === 'eraser' || colorOption.value === color) ? '4px solid' : 'none',
                 borderColor: 'secondary.main',
