@@ -1,0 +1,5 @@
+positive:
+A realistic, happy, magical rainbow unicorn,  sparkles shimmering all around.  Cheerful and enchanting, soft pastel colors and a whimsical, fairy-tale feel.
+
+Negative:
+Splotchy, ugly, messy, drawing, painting, scary, boring
