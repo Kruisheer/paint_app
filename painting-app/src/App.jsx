@@ -1,50 +1,138 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
+// src/PaintingApp.jsx
+
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Button,
+  Box,
+  Typography,
+  Slider,
+  Card,
+  CardContent,
+  CardHeader,
+  Tabs,
+  Tab,
+} from '@mui/material';
+import { Star, Moon, Eraser } from 'lucide-react'; // Imported Eraser icon
+import DOMPurify from 'dompurify';
+
+// Import SVGs as raw strings
+import fishSVG from './assets/images/fish.svg?raw';
+import unicornSVG from './assets/images/unicorn.svg?raw';
+import cheetahSVG from './assets/images/cheetah.svg?raw';
+
+// TabPanel Component
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`painting-tabpanel-${index}`}
+      aria-labelledby={`painting-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const colors = [
-  { name: 'Red', value: 'red' },
-  { name: 'Blue', value: 'blue' },
-  { name: 'Green', value: 'green' },
-  { name: 'Yellow', value: 'yellow' },
-  { name: 'Black', value: 'black' },
-  { name: 'Multi', value: 'multi' },
+  { name: 'Pink', value: '#FF69B4' },
+  { name: 'Purple', value: '#8A2BE2' },
+  { name: 'Yellow', value: '#FFD700' },
+  { name: 'Sky Blue', value: '#87CEEB' },
+  { name: 'Lime Green', value: '#32CD32' },
+  { name: 'Rainbow', value: 'rainbow' },
+  { name: 'Eraser', value: 'eraser', icon: Eraser }, // Added Eraser
 ];
 
-const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
+const rainbowColors = ['#FF69B4', '#FFD700', '#87CEEB', '#32CD32', '#8A2BE2', '#FFA500'];
+
+// Updated images array with imported SVGs
+const images = [
+  { name: 'Fish', svg: fishSVG },
+  { name: 'Unicorn', svg: unicornSVG },
+  { name: 'Cheetah', svg: cheetahSVG },
+];
 
 const PaintingApp = () => {
-  const [color, setColor] = useState('black');
-  const [brushSize, setBrushSize] = useState(5);
+  const [color, setColor] = useState('#FF69B4');
+  const [brushSize, setBrushSize] = useState(10); // For brush stroke width
+  const [stampScale, setStampScale] = useState(1); // For stamp scaling
   const [drawing, setDrawing] = useState(false);
-  const canvasRef = useRef(null);
+  const [activeLayer, setActiveLayer] = useState(1); // 1: Back, 2: Images, 3: Front
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [tabValue, setTabValue] = useState(0); // For Tabs
+  const [stamps, setStamps] = useState([]); // Array to hold all stamps
+  const [maxScale, setMaxScale] = useState(3); // Default maximum scale
+  const [isEraser, setIsEraser] = useState(false); // Added Eraser state
+
   const colorIndexRef = useRef(0);
+  const canvasRefs = [useRef(null), useRef(null), useRef(null)];
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const updateCanvasSize = () => {
-      setCanvasSize({
-        width: window.innerWidth,
-        height: window.innerHeight - 150,
-      });
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width, height: height - 200 }); // Adjusted for additional controls
+      }
     };
+
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.lineWidth = brushSize;
-    
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
-  }, [canvasSize, brushSize]);
+    if (selectedImage) {
+      // Parse the SVG to get intrinsic dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(selectedImage.svg, "image/svg+xml");
+      const svgElement = svgDoc.querySelector('svg');
+
+      const intrinsicWidth = parseFloat(svgElement.getAttribute('width')) || 100; // Default to 100 if not specified
+      const intrinsicHeight = parseFloat(svgElement.getAttribute('height')) || 100;
+
+      // Calculate maximum scale based on canvas size
+      const maxScaleX = canvasSize.width / intrinsicWidth;
+      const maxScaleY = canvasSize.height / intrinsicHeight;
+      const calculatedMaxScale = Math.min(maxScaleX, maxScaleY, 3); // Limit to a maximum of 3x for practicality
+
+      setMaxScale(calculatedMaxScale);
+    }
+  }, [selectedImage, canvasSize]);
+
+  useEffect(() => {
+    const canvas = canvasRefs[1].current; // Middle layer for images
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous stamps
+
+      stamps.forEach((stamp) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(
+            img,
+            stamp.x,
+            stamp.y,
+            img.width * stamp.scale,
+            img.height * stamp.scale
+          );
+        };
+        img.src = `data:image/svg+xml;base64,${btoa(stamp.svg)}`;
+      });
+    }
+  }, [stamps, canvasSize]);
 
   const getNextColor = () => {
-    if (color === 'multi') {
+    if (color === 'rainbow') {
       const nextColor = rainbowColors[colorIndexRef.current];
       colorIndexRef.current = (colorIndexRef.current + 1) % rainbowColors.length;
       return nextColor;
@@ -52,80 +140,592 @@ const PaintingApp = () => {
     return color;
   };
 
-  const handleMouseDown = (e) => {
+  const handleColorSelection = (colorValue) => {
+    if (colorValue === 'eraser') {
+      setIsEraser(true);
+      setColor('#FFFFFF'); // Assuming white as the background color
+    } else {
+      setIsEraser(false);
+      setColor(colorValue);
+    }
+  };
+
+  const startDrawing = (e) => {
+    e.preventDefault();
     setDrawing(true);
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-    ctx.strokeStyle = getNextColor();
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+      const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineWidth = brushSize;
+
+      if (isEraser) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = getNextColor();
+      }
+    }
   };
 
-  const handleMouseMove = (e) => {
+  const draw = (e) => {
+    e.preventDefault();
     if (!drawing) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-    ctx.strokeStyle = getNextColor();
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+      const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+      ctx.lineTo(x, y);
+      ctx.lineWidth = brushSize;
+
+      if (isEraser) {
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.strokeStyle = getNextColor();
+      }
+
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
   };
 
-  const handleMouseUp = () => {
+  const stopDrawing = () => {
     setDrawing(false);
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.globalCompositeOperation = 'source-over'; // Reset to default
+    }
   };
 
-  const handleBrushSizeChange = (value) => {
-    setBrushSize(value[0]);
+  const handleBrushSizeChange = (event, newValue) => {
+    setBrushSize(newValue);
+  };
+
+  const handleStampScaleChange = (event, newValue) => {
+    setStampScale(newValue);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // Handler Functions for Save/Load
+  const handleSaveAsImage = () => {
+    // Create a temporary canvas to combine layers
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasSize.width;
+    tempCanvas.height = canvasSize.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw each layer onto the temporary canvas
+    canvasRefs.forEach((canvasRef, index) => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        tempCtx.drawImage(canvas, 0, 0);
+      }
+    });
+
+    // Convert the temporary canvas to a data URL and trigger download
+    const dataURL = tempCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'painting.png';
+    link.click();
+  };
+
+  const handleSaveProject = () => {
+    const state = {
+      stamps,
+      drawings: canvasRefs.map((canvasRef) => canvasRef.current.toDataURL()),
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const link = document.createElement('a');
+    link.href = dataStr;
+    link.download = 'painting.json';
+    link.click();
+  };
+
+  const handleLoadImage = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'image/png') {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        img.onload = () => {
+          // Clear all canvases
+          canvasRefs.forEach((canvasRef) => {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+          });
+          // Draw the loaded image onto the frontmost canvas
+          const frontCanvas = canvasRefs[2].current; // Front layer
+          const ctx = frontCanvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvasSize.width, canvasSize.height);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      alert('Please upload a valid PNG image.');
+    }
+  };
+
+  const handleLoadProject = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/json') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const state = JSON.parse(event.target.result);
+          if (state.stamps && state.drawings) {
+            setStamps(state.stamps);
+
+            // Restore drawings on respective canvases
+            state.drawings.forEach((dataURL, index) => {
+              const img = new Image();
+              img.onload = () => {
+                const ctx = canvasRefs[index].current.getContext('2d');
+                ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+                ctx.drawImage(img, 0, 0);
+              };
+              img.src = dataURL;
+            });
+          } else {
+            alert('Invalid project file.');
+          }
+        } catch (error) {
+          alert('Error loading project. Please ensure the file is a valid JSON.');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please upload a valid JSON project file.');
+    }
+  };
+
+  const handleCanvasClick = (e) => {
+    if (selectedImage) {
+      const canvas = canvasRefs[activeLayer - 1].current;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Use stampScale for scaling the stamp
+      const imageScale = stampScale;
+
+      // Parse the SVG to get intrinsic dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(selectedImage.svg, "image/svg+xml");
+      const svgElement = svgDoc.querySelector('svg');
+
+      const intrinsicWidth = parseFloat(svgElement.getAttribute('width')) || 100; // Default to 100 if not specified
+      const intrinsicHeight = parseFloat(svgElement.getAttribute('height')) || 100;
+
+      // Calculate the top-left position to center the SVG at the click point
+      const x = clickX - (intrinsicWidth * imageScale) / 2;
+      const y = clickY - (intrinsicHeight * imageScale) / 2;
+
+      // Add the new stamp to the stamps array
+      setStamps([...stamps, { svg: selectedImage.svg, x, y, scale: imageScale }]);
+
+      // Reset selection
+      setSelectedImage(null);
+    }
+  };
+
+  // Compute imageScale for the preview based on stampScale
+  const getPreviewScale = () => {
+    if (!selectedImage) return 1;
+    return stampScale;
+  };
+
+  // Determine cursor style based on Eraser mode
+  const getCursorStyle = () => {
+    return isEraser ? 'cell' : 'crosshair';
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <canvas
-        ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-        className="flex-grow"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-      <div className="flex flex-col items-center space-y-4 p-4">
-        <div className="flex justify-center space-x-2 flex-wrap">
+    <Box
+      ref={containerRef}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh', // Ensures the container takes at least the full viewport height
+        width: '100vw',
+        overflowY: 'auto', // Allows vertical scrolling if content overflows
+        background: 'linear-gradient(to bottom, #FFE6F0, #E6E6FA)', // Background gradient
+      }}
+    >
+      {/* Top Bar: "Magic Painting" Text, SVG Buttons, Stamp Scale Slider */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on extra-small screens
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          gap: 2,
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* "Magic Painting" Text */}
+        <Typography variant="h4" color="primary" sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
+          Magic Painting!
+        </Typography>
+        
+        {/* Image Selection Panel */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+            flex: { xs: '1 1 auto', sm: '0 0 auto' },
+          }}
+        >
+          {images.map((img) => (
+            <Button
+              key={img.name}
+              variant={selectedImage && selectedImage.svg === img.svg ? 'contained' : 'outlined'}
+              onClick={() => {
+                setSelectedImage(img);
+              }}
+              sx={{
+                textTransform: 'none',
+                width: 80,
+                height: 80,
+                padding: 0, // Remove padding to utilize full button size
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 2,
+              }}
+              aria-label={`Select ${img.name} stamp`}
+            >
+              {/* Using <img> tag for better control over SVG sizing */}
+              <img
+                src={`data:image/svg+xml;utf8,${encodeURIComponent(img.svg)}`}
+                alt={img.name}
+                style={{
+                  width: '60%', // 60% of the button size
+                  height: '60%', // 60% of the button size
+                  objectFit: 'contain',
+                }}
+              />
+            </Button>
+          ))}
+        </Box>
+        
+        {/* Stamp Scale Slider */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            flex: { xs: '1 1 100%', sm: '0 0 auto' },
+          }}
+        >
+          {selectedImage && (
+            <>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Adjust Stamp Scale:
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Slider
+                  value={stampScale}
+                  onChange={handleStampScaleChange}
+                  min={0.1}
+                  max={3}
+                  step={0.1}
+                  sx={{ width: 200 }}
+                />
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {/* Preview of the SVG with current stamp scale */}
+                  <img
+                    src={`data:image/svg+xml;utf8,${encodeURIComponent(selectedImage.svg)}`}
+                    alt="Stamp Preview"
+                    style={{
+                      width: `${getPreviewScale() * 60}px`, // Scale based on stampScale
+                      height: `${getPreviewScale() * 60}px`,
+                      objectFit: 'contain',
+                    }}
+                  />
+                </Box>
+              </Box>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Click on the canvas to place the stamp.
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Box>
+      
+      {/* Layer and Canvas Area */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' }, // Stack on small screens
+          flex: 1,
+          position: 'relative',
+        }}
+      >
+        {/* Layer Controls */}
+        <Box
+          sx={{
+            width: { xs: '100%', md: 80 }, // Full width on small screens
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            p: 1,
+          }}
+        >
+          {[
+            { layer: 1, icon: Star, label: 'Back' },
+            // Removed the middle layer button
+            { layer: 3, icon: Moon, label: 'Front' }
+          ].map(({ layer, icon: Icon, label }) => (
+            <Button
+              key={layer}
+              variant={layer === activeLayer ? 'contained' : 'outlined'}
+              onClick={() => setActiveLayer(layer)}
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: 2,
+                mb: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label={`Select ${label} layer`}
+            >
+              <Icon size={24} />
+              <Typography variant="caption" sx={{ mt: 0.5 }}>{label}</Typography>
+            </Button>
+          ))}
+        </Box>
+        
+        {/* Canvas Area */}
+        <Box
+          sx={{
+            flex: 1,
+            position: 'relative',
+            border: '4px solid',
+            borderColor: 'secondary.light',
+            borderRadius: 2,
+            overflow: 'hidden',
+            touchAction: 'none',
+            height: { xs: 300, md: 'auto' }, // Set a fixed height on small screens
+            cursor: getCursorStyle(),
+          }}
+        >
+          {canvasRefs.map((canvasRef, index) => (
+            <canvas
+              key={index}
+              ref={canvasRef}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                zIndex: index + 1, // Ensure proper stacking order
+                display: 'block', // Always display all layers
+                opacity: 1,
+              }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              onClick={handleCanvasClick} // Handle stamp placement
+            />
+          ))}
+        </Box>
+        
+        {/* Color Palette with Vertical Brush Size Slider */}
+        <Box
+          sx={{
+            width: { xs: '100%', md: 80 }, // Full width on small screens
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            p: 1,
+          }}
+        >
           {colors.map((colorOption) => (
             <Button
               key={colorOption.name}
-              variant={colorOption.value === color ? 'default' : 'outline'}
-              onClick={() => setColor(colorOption.value)}
-              className="w-20 m-1"
+              variant={colorOption.value === (isEraser ? 'eraser' : color) ? 'contained' : 'outlined'}
+              onClick={() => handleColorSelection(colorOption.value)}
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                mb: 1,
+                backgroundColor: colorOption.value === 'rainbow' ? 'white' : (colorOption.value === 'eraser' ? 'transparent' : colorOption.value),
+                border: (colorOption.value === 'eraser' || colorOption.value === color) ? '4px solid' : 'none',
+                borderColor: 'secondary.main',
+                '&:hover': {
+                  backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : (colorOption.value === 'eraser' ? '#f0f0f0' : colorOption.value),
+                },
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label={`Select ${colorOption.name} ${colorOption.value === 'eraser' ? 'Eraser' : 'color'}`}
             >
-              {colorOption.name}
+              {colorOption.value === 'rainbow' ? (
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(to right, #FF69B4, #FFD700, #87CEEB)',
+                  }}
+                />
+              ) : colorOption.value === 'eraser' ? (
+                <Eraser size={24} /> // Display Eraser icon
+              ) : (
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    backgroundColor: colorOption.value,
+                  }}
+                />
+              )}
             </Button>
           ))}
-        </div>
-        <div className="w-full max-w-xs">
-          <Card>
-            <CardHeader>
-              <CardTitle>Brush Size: {brushSize}px</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Slider
-                value={[brushSize]}
-                onValueChange={handleBrushSizeChange}
-                min={1}
-                max={50}
-                step={1}
+
+          {/* Vertical Brush Size Slider */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              mt: 2,
+            }}
+          >
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Brush Size:
+            </Typography>
+            <Slider
+              orientation="vertical"
+              value={brushSize}
+              onChange={handleBrushSizeChange}
+              min={1}
+              max={50}
+              step={1}
+              sx={{ height: 150 }}
+              aria-labelledby="brush-size-slider"
+            />
+          </Box>
+        </Box>
+      </Box>
+      
+      {/* Save/Load Buttons Positioned Below Canvas and Controls */}
+      <Box
+        sx={{
+          width: '100%',
+          mb: 2,
+          px: 2,
+        }}
+      >
+        <Tabs value={tabValue} onChange={handleTabChange} centered>
+          <Tab label="Save/Load" />
+        </Tabs>
+        <TabPanel value={tabValue} index={0}>
+          {/* Save and Load Buttons */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' }, // Stack on extra-small screens
+              justifyContent: 'center',
+              gap: 2,
+              p: 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            {/* Save as Image */}
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSaveAsImage}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
+            >
+              Save as Image
+            </Button>
+
+            {/* Save Project (JSON) */}
+            <Button
+              variant="contained"
+              color="info"
+              onClick={handleSaveProject}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
+            >
+              Save Project
+            </Button>
+
+            {/* Load Image */}
+            <Button
+              variant="contained"
+              color="primary"
+              component="label"
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
+            >
+              Load Image
+              <input
+                type="file"
+                accept="image/png"
+                hidden
+                onChange={handleLoadImage}
               />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+            </Button>
+
+            {/* Load Project */}
+            <Button
+              variant="contained"
+              color="secondary"
+              component="label"
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
+            >
+              Load Project
+              <input
+                type="file"
+                accept="application/json"
+                hidden
+                onChange={handleLoadProject}
+              />
+            </Button>
+          </Box>
+        </TabPanel>
+      </Box>
+    </Box>
   );
 };
 
