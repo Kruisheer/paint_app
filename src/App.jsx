@@ -1,4 +1,4 @@
-// src/PaintingApp.jsx
+a// src/PaintingApp.jsx
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -12,7 +12,7 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { Star, Moon } from 'lucide-react';
+import { Star, Moon, Eraser } from 'lucide-react'; // Imported Eraser icon
 import DOMPurify from 'dompurify';
 
 // Import SVGs as raw strings
@@ -48,6 +48,7 @@ const colors = [
   { name: 'Sky Blue', value: '#87CEEB' },
   { name: 'Lime Green', value: '#32CD32' },
   { name: 'Rainbow', value: 'rainbow' },
+  { name: 'Eraser', value: 'eraser', icon: Eraser }, // Added Eraser
 ];
 
 const rainbowColors = ['#FF69B4', '#FFD700', '#87CEEB', '#32CD32', '#8A2BE2', '#FFA500'];
@@ -69,6 +70,7 @@ const PaintingApp = () => {
   const [tabValue, setTabValue] = useState(0); // For Tabs
   const [stamps, setStamps] = useState([]); // Array to hold all stamps
   const [maxScale, setMaxScale] = useState(3); // Default maximum scale
+  const [isEraser, setIsEraser] = useState(false); // Added Eraser state
 
   const colorIndexRef = useRef(0);
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
@@ -137,6 +139,16 @@ const PaintingApp = () => {
     return color;
   };
 
+  const handleColorSelection = (colorValue) => {
+    if (colorValue === 'eraser') {
+      setIsEraser(true);
+      setColor('#FFFFFF'); // Assuming white as the background color
+    } else {
+      setIsEraser(false);
+      setColor(colorValue);
+    }
+  };
+
   const startDrawing = (e) => {
     e.preventDefault();
     setDrawing(true);
@@ -148,8 +160,15 @@ const PaintingApp = () => {
       const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.strokeStyle = getNextColor();
       ctx.lineWidth = brushSize;
+
+      if (isEraser) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = getNextColor();
+      }
     }
   };
 
@@ -163,8 +182,14 @@ const PaintingApp = () => {
       const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
       const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
       ctx.lineTo(x, y);
-      ctx.strokeStyle = getNextColor();
       ctx.lineWidth = brushSize;
+
+      if (isEraser) {
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.strokeStyle = getNextColor();
+      }
+
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -173,6 +198,11 @@ const PaintingApp = () => {
 
   const stopDrawing = () => {
     setDrawing(false);
+    const canvas = canvasRefs[activeLayer - 1].current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.globalCompositeOperation = 'source-over'; // Reset to default
+    }
   };
 
   const handleBrushSizeChange = (event, newValue) => {
@@ -313,6 +343,11 @@ const PaintingApp = () => {
     if (!selectedImage) return 1;
     const minScale = 0.1; // Minimum scale factor
     return (brushSize / 50) * (maxScale - minScale) + minScale;
+  };
+
+  // Determine cursor style based on Eraser mode
+  const getCursorStyle = () => {
+    return isEraser ? 'cell' : 'crosshair';
   };
 
   return (
@@ -476,6 +511,7 @@ const PaintingApp = () => {
             overflow: 'hidden',
             touchAction: 'none',
             height: { xs: 300, md: 'auto' }, // Set a fixed height on small screens
+            cursor: getCursorStyle(),
           }}
         >
           {canvasRefs.map((canvasRef, index) => (
@@ -517,32 +553,43 @@ const PaintingApp = () => {
           {colors.map((colorOption) => (
             <Button
               key={colorOption.name}
-              variant={colorOption.value === color ? 'contained' : 'outlined'}
-              onClick={() => setColor(colorOption.value)}
+              variant={colorOption.value === (isEraser ? 'eraser' : color) ? 'contained' : 'outlined'}
+              onClick={() => handleColorSelection(colorOption.value)}
               sx={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
                 mb: 1,
-                backgroundColor: colorOption.value === 'rainbow' ? 'white' : colorOption.value,
-                border: colorOption.value === color ? '4px solid' : 'none',
+                backgroundColor: colorOption.value === 'rainbow' ? 'white' : (colorOption.value === 'eraser' ? 'transparent' : colorOption.value),
+                border: (colorOption.value === 'eraser' || colorOption.value === color) ? '4px solid' : 'none',
                 borderColor: 'secondary.main',
                 '&:hover': {
-                  backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : colorOption.value,
+                  backgroundColor: colorOption.value === 'rainbow' ? 'grey.100' : (colorOption.value === 'eraser' ? '#f0f0f0' : colorOption.value),
                 },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              aria-label={`Select ${colorOption.name} color`}
+              aria-label={`Select ${colorOption.name} ${colorOption.value === 'eraser' ? 'Eraser' : 'color'}`}
             >
-              {colorOption.value === 'rainbow' && (
+              {colorOption.value === 'rainbow' ? (
                 <Box
                   sx={{
                     width: '100%',
                     height: '100%',
                     borderRadius: '50%',
                     background: 'linear-gradient(to right, #FF69B4, #FFD700, #87CEEB)',
+                  }}
+                />
+              ) : colorOption.value === 'eraser' ? (
+                <Eraser size={24} /> // Display Eraser icon
+              ) : (
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    backgroundColor: colorOption.value,
                   }}
                 />
               )}
