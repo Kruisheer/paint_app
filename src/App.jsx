@@ -97,15 +97,24 @@ const PaintingApp = () => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
-  // Fill the base canvas with white whenever canvas size changes
+  // Fill the base canvas with white or the generated image whenever canvas size or generatedImage changes
   useEffect(() => {
     const baseCanvas = canvasRefs[0].current;
     if (baseCanvas) {
       baseCanvas.width = canvasSize.width;
       baseCanvas.height = canvasSize.height;
       const ctx = baseCanvas.getContext('2d');
-      ctx.fillStyle = '#FFFFFF'; // White background
-      ctx.fillRect(0, 0, baseCanvas.width, baseCanvas.height);
+      if (generatedImage) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, baseCanvas.width, baseCanvas.height); // Clear existing content
+          ctx.drawImage(img, 0, 0, baseCanvas.width, baseCanvas.height); // Draw generated image
+        };
+        img.src = generatedImage;
+      } else {
+        ctx.fillStyle = '#FFFFFF'; // White background
+        ctx.fillRect(0, 0, baseCanvas.width, baseCanvas.height);
+      }
     }
 
     // Also update other canvases to match the new size
@@ -118,7 +127,7 @@ const PaintingApp = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     });
-  }, [canvasSize, stamps]);
+  }, [canvasSize, stamps, generatedImage]); // Added generatedImage to dependencies
 
   // Handle selected image changes and calculate max scale
   useEffect(() => {
@@ -274,6 +283,7 @@ const PaintingApp = () => {
     const state = {
       stamps,
       drawings: canvasRefs.map((canvasRef) => canvasRef.current.toDataURL()),
+      generatedImage, // Include generatedImage in the project state
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
     const link = document.createElement('a');
@@ -321,6 +331,7 @@ const PaintingApp = () => {
           const state = JSON.parse(event.target.result);
           if (state.stamps && state.drawings) {
             setStamps(state.stamps);
+            setGeneratedImage(state.generatedImage || null); // Restore generatedImage if present
 
             // Restore drawings on respective canvases
             state.drawings.forEach((dataURL, index) => {
@@ -328,8 +339,8 @@ const PaintingApp = () => {
               img.onload = () => {
                 const ctx = canvasRefs[index].current.getContext('2d');
                 ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-                if (index === 0) {
-                  // Fill base canvas with white after clearing
+                if (index === 0 && !state.generatedImage) {
+                  // Fill base canvas with white after clearing if no generatedImage
                   ctx.fillStyle = '#FFFFFF';
                   ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
                 }
@@ -397,7 +408,7 @@ const PaintingApp = () => {
   const handleMagicButton = async () => {
     setLoadingMagic(true);
     setMagicError(null);
-    setGeneratedImage(null);
+    setGeneratedImage(null); // Reset any previous generated image
 
     try {
       // Create a temporary canvas to combine layers
@@ -466,7 +477,11 @@ const PaintingApp = () => {
 
       if (response.status === 200) {
         const imageDataBase64 = response.data.images[0];
-        setGeneratedImage(`data:image/png;base64,${imageDataBase64}`);
+        const generatedDataURL = `data:image/png;base64,${imageDataBase64}`;
+        setGeneratedImage(generatedDataURL); // This will trigger useEffect to draw on back canvas
+
+        // Clear stamps and other layers by updating state
+        setStamps([]); // This clears the middle layer stamps and triggers the useEffect to clear other canvases
       } else {
         setMagicError(`Failed to generate image. Status code: ${response.status}`);
         console.error('Magic API Response Data:', response.data);
@@ -692,7 +707,7 @@ const PaintingApp = () => {
             />
           ))}
           
-          {/* **Display Generated Image (Magic Result)** */}
+          {/* **Display Generated Image (Magic Result) - Optional** */}
           {generatedImage && (
             <Box
               sx={{
