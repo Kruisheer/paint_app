@@ -10,9 +10,12 @@ import {
   CardHeader,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { Star, Moon, Eraser } from 'lucide-react'; // Imported Eraser icon
 import DOMPurify from 'dompurify';
+import axios from 'axios'; // Import axios for API requests
 
 // Import SVGs as raw strings
 import fishSVG from './assets/images/fish.svg?raw';
@@ -70,6 +73,11 @@ const PaintingApp = () => {
   const [stamps, setStamps] = useState([]); // Array to hold all stamps
   const [maxScale, setMaxScale] = useState(3); // Default maximum scale
   const [isEraser, setIsEraser] = useState(false); // Added Eraser state
+
+  // States for Magic Button
+  const [loadingMagic, setLoadingMagic] = useState(false);
+  const [magicError, setMagicError] = useState(null);
+  const [generatedImage, setGeneratedImage] = useState(null);
 
   const colorIndexRef = useRef(0);
   const canvasRefs = [useRef(null), useRef(null), useRef(null)];
@@ -385,6 +393,116 @@ const PaintingApp = () => {
     return isEraser ? 'cell' : 'crosshair';
   };
 
+  // **Magic Button Handler**
+  const handleMagicButton = async () => {
+    setLoadingMagic(true);
+    setMagicError(null);
+    setGeneratedImage(null);
+
+    try {
+      // Create a temporary canvas to combine layers
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvasSize.width;
+      tempCanvas.height = canvasSize.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // Draw each layer onto the temporary canvas
+      canvasRefs.forEach((canvasRef, index) => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          tempCtx.drawImage(canvas, 0, 0);
+        }
+      });
+
+      // Convert the temporary canvas to a data URL
+      const dataURL = tempCanvas.toDataURL('image/png');
+
+      // Convert data URL to base64 string
+      const base64Image = dataURL.split(',')[1]; // Remove the data:image/png;base64, prefix
+
+      // Get image dimensions
+      const dimensions = await getImageDimensionsFromDataURL(dataURL);
+      const { width, height } = dimensions;
+
+      // Prepare the payload
+      const payload = {
+        prompt: "A realistic, happy, magical rainbow unicorn horse, sparkles shimmering all around. Cheerful and enchanting, soft pastel colors and a whimsical, fairy-tale feel.",
+        negative_prompt: "Splotchy, ugly, messy, drawing, painting, scary, boring",
+        steps: 20,
+        cfg_scale: 7.5,
+        width: width,
+        height: height,
+        sampler_name: "DPM++ 3M SDE Karras",
+        model: "3dAnimationDiffusion_v10.safetensors [31829c378d]",
+        alwayson_scripts: {
+          controlnet: {
+            args: [
+              {
+                input_image: base64Image, // Pure base64 string
+                module: "scribble_pidinet",
+                model: "control_v11p_sd15_scribble [61dd9fb9]",
+                processor_res: 512,
+                guidance_start: 0.0,
+                guidance_end: 1.0,
+                control_mode: "ControlNet is more important",
+              },
+            ],
+          },
+        },
+      };
+
+      console.log('Magic Payload:', payload);
+
+      const API_URL = "https://sd.ngrok.pro/sdapi/v1/txt2img";
+
+      // Make the API request
+      const response = await axios.post(API_URL, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Magic API Response:', response);
+
+      if (response.status === 200) {
+        const imageDataBase64 = response.data.images[0];
+        setGeneratedImage(`data:image/png;base64,${imageDataBase64}`);
+      } else {
+        setMagicError(`Failed to generate image. Status code: ${response.status}`);
+        console.error('Magic API Response Data:', response.data);
+      }
+    } catch (err) {
+      console.error('Magic Error Details:', err);
+      if (err.response) {
+        // The request was made, and the server responded with a status code outside 2xx
+        console.error('Magic Response Data:', err.response.data);
+        setMagicError(`Error: ${err.response.status} ${err.response.statusText}`);
+      } else if (err.request) {
+        // The request was made, but no response was received
+        console.error('Magic No response received:', err.request);
+        setMagicError('No response received from the server.');
+      } else {
+        // Something happened in setting up the request
+        console.error('Magic Error Message:', err.message);
+        setMagicError(`Error: ${err.message}`);
+      }
+    } finally {
+      setLoadingMagic(false);
+    }
+  };
+
+  // Utility function to get image dimensions from Data URL
+  const getImageDimensionsFromDataURL = (dataURL) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = dataURL;
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.onerror = reject;
+    });
+  };
+
   return (
     <Box
       ref={containerRef}
@@ -573,6 +691,43 @@ const PaintingApp = () => {
               onClick={handleCanvasClick} // Handle stamp placement
             />
           ))}
+          
+          {/* **Display Generated Image (Magic Result)** */}
+          {generatedImage && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 10,
+                right: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                padding: 2,
+                borderRadius: 2,
+                boxShadow: 3,
+                maxWidth: '80%',
+                maxHeight: '80%',
+                overflow: 'auto',
+              }}
+            >
+              <Typography variant="h6" gutterBottom>
+                Generated Image
+              </Typography>
+              <img
+                src={generatedImage}
+                alt="Generated"
+                style={{ maxWidth: '100%', maxHeight: '400px' }}
+              />
+              <Box sx={{ mt: 1, textAlign: 'right' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  href={generatedImage}
+                  download="generated_image.png"
+                >
+                  Download
+                </Button>
+              </Box>
+            </Box>
+          )}
         </Box>
         
         {/* Color Palette */}
@@ -656,7 +811,7 @@ const PaintingApp = () => {
         </CardContent>
       </Card>
       
-      {/* Save/Load Buttons Positioned Below Brush Size Slider */}
+      {/* Save/Load and Magic Buttons Positioned Below Brush Size Slider */}
       <Box
         sx={{
           width: '100%',
@@ -667,6 +822,7 @@ const PaintingApp = () => {
       >
         <Tabs value={tabValue} onChange={handleTabChange} centered>
           <Tab label="Save/Load" />
+          <Tab label="Magic" />
         </Tabs>
         <TabPanel value={tabValue} index={0}>
           {/* Save and Load Buttons */}
@@ -731,6 +887,38 @@ const PaintingApp = () => {
                 onChange={handleLoadProject}
               />
             </Button>
+          </Box>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          {/* Magic Button and API Interaction */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              p: 2,
+            }}
+          >
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleMagicButton}
+              disabled={loadingMagic}
+              sx={{ textTransform: 'none', width: { xs: '100%', sm: 'auto' } }}
+            >
+              {loadingMagic ? <CircularProgress size={24} color="inherit" /> : 'Magic'}
+            </Button>
+
+            {/* Display Magic Errors */}
+            {magicError && (
+              <Alert severity="error" sx={{ width: '100%', maxWidth: 400 }}>
+                {magicError}
+              </Alert>
+            )}
+
+            {/* Display Generated Image is handled above within Canvas Area */}
           </Box>
         </TabPanel>
       </Box>
