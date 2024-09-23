@@ -443,7 +443,7 @@ const PaintingApp = () => {
         cfg_scale: 7.5,
         width: width,
         height: height,
-        sampler_name: "DPM++ 3M SDE Karras",
+        sampler_name: "Euler a",
         model: "3dAnimationDiffusion_v10.safetensors [31829c378d]",
         alwayson_scripts: {
           controlnet: {
